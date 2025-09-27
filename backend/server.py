@@ -532,6 +532,11 @@ async def get_analysis_results(analysis_id: str):
     
     return analysis_results[analysis_id]
 
+@api_router.options("/{path:path}")
+async def handle_options():
+    """Handle OPTIONS requests for CORS"""
+    return JSONResponse(content={"message": "OK"})
+
 @api_router.get("/")
 async def root():
     return {"message": "PingPro API - Analyse IA Tennis de Table"}
