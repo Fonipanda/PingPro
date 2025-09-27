@@ -177,7 +177,7 @@ async def analyze_frames_with_vision(frames_data: List[str], params: AnalysisReq
         # Try to parse JSON response
         try:
             return json.loads(response)
-        except:
+        except (json.JSONDecodeError, TypeError):
             # If not JSON, return structured text
             return {
                 "stroke_analysis": {
