@@ -104,14 +104,14 @@ async def analyze_frames_with_vision(frames_data: List[str], params: AnalysisReq
         base_url="https://api.emergentmethods.ai/v1"
     )
     
-    prompt = f"""
-    Tu es un expert entraîneur de tennis de table avec plus de 20 ans d'expérience. 
+    # Create the prompt without f-string to avoid JSON formatting issues
+    prompt = """Tu es un expert entraîneur de tennis de table avec plus de 20 ans d'expérience. 
     Analyse ces images extraites d'une vidéo de match de tennis de table.
     
     CONTEXTE:
-    - Niveau du joueur: {params.skill_level}
-    - Côté du joueur à analyser: {params.player_side}
-    - Zones d'analyse prioritaires: {', '.join(params.focus_areas)}
+    - Niveau du joueur: """ + params.skill_level + """
+    - Côté du joueur à analyser: """ + params.player_side + """
+    - Zones d'analyse prioritaires: """ + ', '.join(params.focus_areas) + """
     
     ANALYSE TECHNIQUE À EFFECTUER:
     
@@ -139,27 +139,27 @@ async def analyze_frames_with_vision(frames_data: List[str], params: AnalysisReq
     - Mauvais positionnement
     - Manque de préparation
     
-    RÉPONDS EN JSON avec cette structure:
-    {
-      "stroke_analysis": {
-        "identified_strokes": ["liste des coups identifiés"],
-        "technique_quality": "évaluation de 1 à 10",
-        "strengths": ["points forts techniques"],
-        "weaknesses": ["points faibles techniques"]
-      },
-      "positioning_analysis": {
-        "court_position": "évaluation du positionnement",
-        "movement_quality": "qualité des déplacements",
-        "balance_score": "score d'équilibre de 1 à 10"
-      },
-      "timing_analysis": {
-        "preparation_quality": "qualité de préparation",
-        "impact_timing": "précision du timing",
-        "rhythm_consistency": "consistance du rythme"
-      },
-      "errors_identified": ["erreurs spécifiques observées"],
-      "improvement_priorities": ["3 priorités d'amélioration"]
-    }
+    RÉPONDS EN JSON avec cette structure exacte:
+    {{
+      "stroke_analysis": {{
+        "identified_strokes": ["coup droit", "revers", "service"],
+        "technique_quality": "7",
+        "strengths": ["bonne prise", "bon équilibre"],
+        "weaknesses": ["timing à améliorer"]
+      }},
+      "positioning_analysis": {{
+        "court_position": "position correcte par rapport à la table",
+        "movement_quality": "déplacements fluides",
+        "balance_score": "8"
+      }},
+      "timing_analysis": {{
+        "preparation_quality": "bonne préparation des coups",
+        "impact_timing": "timing précis",
+        "rhythm_consistency": "rythme régulier"
+      }},
+      "errors_identified": ["erreur timing", "position pied"],
+      "improvement_priorities": ["améliorer timing", "travailler déplacements", "renforcer technique"]
+    }}
     """
     
     # Prepare messages for API
