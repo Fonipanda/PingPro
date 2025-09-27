@@ -98,10 +98,9 @@ async def analyze_frames_with_vision(frames_data: List[str], params: AnalysisReq
     """Analyze video frames using OpenAI GPT-4o Vision with Emergent LLM key"""
     import openai
     
-    # Use Emergent LLM key
+    # Use Emergent LLM key with standard OpenAI configuration
     client_ai = openai.AsyncOpenAI(
-        api_key=EMERGENT_LLM_KEY,
-        base_url="https://api.emergentmethods.ai/v1"
+        api_key=EMERGENT_LLM_KEY
     )
     
     # Create the prompt without f-string to avoid JSON formatting issues
