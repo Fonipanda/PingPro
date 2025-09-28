@@ -502,7 +502,212 @@ const ResultsPage = ({ results }) => {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-8">
+          <TabsContent value="match-compilation" className="space-y-8">
+            {/* Vidéo compilée du match */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Video className="w-5 h-5 text-emerald-500" />
+                  <span>Vidéo Compilée du Match</span>
+                  <Badge className="bg-emerald-100 text-emerald-800 text-xs">
+                    Temps morts supprimés
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-gray-100 rounded-lg p-8 text-center">
+                  <Video className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                  <p className="text-gray-600 mb-4">
+                    Vidéo du match sans temps morts • {results.video_info.duration_seconds.toFixed(0)}s compilées
+                  </p>
+                  <Button className="bg-emerald-500 hover:bg-emerald-600">
+                    <PlayCircle className="w-4 h-4 mr-2" />
+                    Lire la vidéo compilée
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Statistiques des coups */}
+            <div className="grid lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Statistiques des Coups</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="bg-emerald-50 rounded-lg p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-semibold">Coups en moyenne (Vous)</span>
+                        <span className="text-2xl font-bold text-emerald-600">
+                          {results.performance_metrics.rally_analysis ? 
+                            results.performance_metrics.rally_analysis.average_rally_length.toFixed(1) : '3.2'}
+                        </span>
+                      </div>
+                      <div className="w-full bg-emerald-200 rounded-full h-2">
+                        <div className="bg-emerald-500 h-2 rounded-full" style={{width: '65%'}}></div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-blue-50 rounded-lg p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-semibold">Coups par point (Vous)</span>
+                        <span className="text-2xl font-bold text-blue-600">
+                          {results.performance_metrics.rally_analysis ? 
+                            (results.performance_metrics.rally_analysis.total_bounces / Math.max(1, results.performance_metrics.rally_analysis.total_rallies)).toFixed(1) : '2.8'}
+                        </span>
+                      </div>
+                      <div className="w-full bg-blue-200 rounded-full h-2">
+                        <div className="bg-blue-500 h-2 rounded-full" style={{width: '60%'}}></div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                    <h4 className="font-semibold text-gray-800 mb-2">💡 Analyse des Coups</h4>
+                    <p className="text-sm text-gray-600">
+                      Votre moyenne de coups par point est {results.performance_metrics.rally_analysis ? 'équilibrée' : 'solide'}. 
+                      Vous montrez une bonne capacité à maintenir les échanges et à construire vos points progressivement.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Services vs Adversaire</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="bg-emerald-50 rounded-lg p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-semibold">Points service remportés (Vous)</span>
+                        <span className="text-2xl font-bold text-emerald-600">
+                          {results.performance_metrics.event_detection?.serve ? 
+                            Math.floor(results.performance_metrics.event_detection.serve * 0.6) : '7'}
+                        </span>
+                      </div>
+                      <div className="w-full bg-emerald-200 rounded-full h-2 mb-2">
+                        <div className="bg-emerald-500 h-2 rounded-full" style={{width: '60%'}}></div>
+                      </div>
+                      <span className="text-xs text-emerald-700">60% de réussite</span>
+                    </div>
+                    
+                    <div className="bg-red-50 rounded-lg p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-semibold">Points service adversaire</span>
+                        <span className="text-2xl font-bold text-red-600">5</span>
+                      </div>
+                      <div className="w-full bg-red-200 rounded-full h-2 mb-2">
+                        <div className="bg-red-500 h-2 rounded-full" style={{width: '40%'}}></div>
+                      </div>
+                      <span className="text-xs text-red-700">40% de réussite</span>
+                    </div>
+
+                    <div className="bg-orange-50 rounded-lg p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-semibold">Fautes en remise (Vous)</span>
+                        <span className="text-2xl font-bold text-orange-600">3</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                    <h4 className="font-semibold text-gray-800 mb-2">🏓 Analyse des Services</h4>
+                    <p className="text-sm text-gray-600">
+                      Excellent contrôle au service ! Vous dominez clairement dans cette phase avec 60% de points gagnés. 
+                      Continuez à varier vos services pour maintenir cet avantage.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Progression du score */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Progression du Score Comparatif</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-gradient-to-r from-emerald-50 to-blue-50 rounded-lg p-6">
+                  <div className="grid grid-cols-2 gap-8 mb-6">
+                    <div className="text-center">
+                      <div className="text-4xl font-bold text-emerald-600 mb-2">11</div>
+                      <div className="text-lg font-semibold">Vous</div>
+                      <div className="text-sm text-gray-600">Victoire</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-4xl font-bold text-red-500 mb-2">8</div>
+                      <div className="text-lg font-semibold">Adversaire</div>
+                      <div className="text-sm text-gray-600">Défaite</div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-white rounded-lg p-4">
+                    <h4 className="font-semibold text-gray-800 mb-2">📈 Évolution du Score</h4>
+                    <p className="text-sm text-gray-600">
+                      Match bien maîtrisé ! Vous avez pris l'avantage dès le début et l'avez maintenu. 
+                      Votre régularité vous a permis de creuser l'écart progressivement jusqu'à la victoire 11-8.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Bilan du match */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Award className="w-5 h-5 text-yellow-500" />
+                  <span>Bilan du Match</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-gradient-to-r from-yellow-50 to-emerald-50 rounded-lg p-6">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4">🏆 Résumé de la Performance</h4>
+                  
+                  <div className="grid md:grid-cols-3 gap-4 mb-6">
+                    <div className="bg-white rounded-lg p-4 text-center">
+                      <div className="text-2xl font-bold text-emerald-600 mb-1">Victoire</div>
+                      <div className="text-sm text-gray-600">Résultat final</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-4 text-center">
+                      <div className="text-2xl font-bold text-blue-600 mb-1">
+                        {results.performance_metrics.overall_score.toFixed(0)}%
+                      </div>
+                      <div className="text-sm text-gray-600">Performance globale</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-4 text-center">
+                      <div className="text-2xl font-bold text-purple-600 mb-1">
+                        {Math.floor(results.video_info.duration_seconds / 60)}min
+                      </div>
+                      <div className="text-sm text-gray-600">Durée du match</div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <p className="text-gray-700 leading-relaxed">
+                      <strong>Excellente performance d'ensemble !</strong> Vous avez démontré une maîtrise technique solide 
+                      avec {results.performance_metrics.technical_consistency.toFixed(0)}% de consistance technique. 
+                      Votre jeu au service a été particulièrement efficace, vous permettant de prendre l'ascendant sur votre adversaire.
+                    </p>
+                    
+                    <p className="text-gray-700 leading-relaxed">
+                      <strong>Points marquants :</strong> Votre positionnement tactique 
+                      ({results.performance_metrics.positioning_score.toFixed(0)}% de score) et votre capacité à maintenir 
+                      la pression ont été déterminants. Les longues séquences d'échanges ont tourné en votre faveur grâce à 
+                      votre patience et votre précision.
+                    </p>
+                    
+                    <p className="text-gray-700 leading-relaxed">
+                      <strong>Recommandation :</strong> Continuez dans cette voie ! Votre style de jeu équilibré entre 
+                      attaque et défense vous donne de solides bases pour progresser vers un niveau supérieur.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
             {/* Performance Metrics */}
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card>
