@@ -482,23 +482,23 @@ const ResultsPage = ({ results }) => {
       </header>
 
       <div className="container mx-auto px-6 py-8">
-        <Tabs defaultValue="overview" className="space-y-8">
+        <Tabs defaultValue="match-compilation" className="space-y-8">
           <TabsList className="grid w-full grid-cols-4 bg-white shadow-sm">
-            <TabsTrigger value="overview" className="flex items-center space-x-2">
-              <BarChart3 className="w-4 h-4" />
-              <span>Vue d'ensemble</span>
-            </TabsTrigger>
-            <TabsTrigger value="technique" className="flex items-center space-x-2">
-              <Target className="w-4 h-4" />
-              <span>Technique</span>
-            </TabsTrigger>
-            <TabsTrigger value="recommendations" className="flex items-center space-x-2">
-              <Star className="w-4 h-4" />
-              <span>Conseils</span>
-            </TabsTrigger>
-            <TabsTrigger value="highlights" className="flex items-center space-x-2">
+            <TabsTrigger value="match-compilation" className="flex items-center space-x-2">
               <Video className="w-4 h-4" />
-              <span>Highlights</span>
+              <span>Match Compilé</span>
+            </TabsTrigger>
+            <TabsTrigger value="strengths" className="flex items-center space-x-2">
+              <TrendingUp className="w-4 h-4" />
+              <span>Points Forts</span>
+            </TabsTrigger>
+            <TabsTrigger value="weaknesses" className="flex items-center space-x-2">
+              <Target className="w-4 h-4" />
+              <span>Points Faibles</span>
+            </TabsTrigger>
+            <TabsTrigger value="best-rallies" className="flex items-center space-x-2">
+              <Trophy className="w-4 h-4" />
+              <span>Meilleurs Échanges</span>
             </TabsTrigger>
           </TabsList>
 
