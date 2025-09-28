@@ -1310,27 +1310,6 @@ const ResultsPage = ({ results }) => {
               </CardContent>
             </Card>
           </TabsContent>
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Star className="w-5 h-5" />
-                  <span>Conseils personnalisés</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {results.recommendations.map((recommendation, index) => (
-                    <div key={index} className="flex items-start space-x-3 p-4 bg-gradient-to-r from-emerald-50 to-blue-50 rounded-lg border border-emerald-100">
-                      <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <Award className="w-4 h-4 text-emerald-600" />
-                      </div>
-                      <p className="text-gray-800 leading-relaxed">{recommendation}</p>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           <TabsContent value="best-rallies" className="space-y-8">
             {/* Vidéo des meilleurs échanges */}
