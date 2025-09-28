@@ -77,6 +77,7 @@ class TechnicalAnalysis(BaseModel):
     positioning_analysis: Dict[str, Any]
     timing_analysis: Dict[str, Any]
     movement_analysis: Dict[str, Any]
+    ttnet_analysis: Optional[Dict[str, Any]] = None  # Advanced CV analysis
 
 class PerformanceMetrics(BaseModel):
     technical_consistency: float
