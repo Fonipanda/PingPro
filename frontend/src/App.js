@@ -1458,7 +1458,273 @@ const ResultsPage = ({ results }) => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="highlights" className="space-y-6">
+          <TabsContent value="best-rallies" className="space-y-8">
+            {/* Vidéo des meilleurs échanges */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Trophy className="w-5 h-5 text-yellow-500" />
+                  <span>Vidéo des Meilleurs Échanges</span>
+                  <Badge className="bg-yellow-100 text-yellow-800 text-xs">
+                    Highlights du match
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-gradient-to-r from-yellow-100 to-amber-100 rounded-lg p-8 text-center">
+                  <Trophy className="w-16 h-16 mx-auto mb-4 text-yellow-500" />
+                  <p className="text-gray-700 mb-4">
+                    Les échanges les plus spectaculaires du match • Points d'anthologie
+                  </p>
+                  <Button className="bg-yellow-500 hover:bg-yellow-600">
+                    <PlayCircle className="w-4 h-4 mr-2" />
+                    Voir les meilleurs moments
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Statistiques des échanges */}
+            <div className="grid lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Longs Points Remportés</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center mb-6">
+                    <div className="text-4xl font-bold text-emerald-600 mb-2">8</div>
+                    <div className="text-lg text-gray-600 mb-4">Points de plus de 5 coups</div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-emerald-50 rounded-lg p-4">
+                        <div className="text-2xl font-bold text-emerald-600">8</div>
+                        <div className="text-sm text-emerald-700">Vous</div>
+                        <div className="text-xs text-gray-500">73% des longs points</div>
+                      </div>
+                      <div className="bg-red-50 rounded-lg p-4">
+                        <div className="text-2xl font-bold text-red-600">3</div>
+                        <div className="text-sm text-red-700">Adversaire</div>
+                        <div className="text-xs text-gray-500">27% des longs points</div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-emerald-50 rounded-lg p-4">
+                    <h4 className="font-semibold text-emerald-800 mb-2">🏆 Domination dans la longueur</h4>
+                    <p className="text-sm text-emerald-700">
+                      Excellent ! Vous remportez 73% des longs échanges. Votre endurance et votre régularité 
+                      font la différence quand les points s'éternisent.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Services Détaillés</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="bg-blue-50 rounded-lg p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-semibold">Vos services</span>
+                        <span className="text-2xl font-bold text-blue-600">12</span>
+                      </div>
+                      <div className="text-sm text-blue-700">
+                        Services effectués pendant les meilleurs échanges
+                      </div>
+                    </div>
+                    
+                    <div className="bg-purple-50 rounded-lg p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-semibold">Services adversaire</span>
+                        <span className="text-2xl font-bold text-purple-600">9</span>
+                      </div>
+                      <div className="text-sm text-purple-700">
+                        Services adversaire dans les highlights
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <div className="text-center">
+                        <div className="text-lg font-semibold text-gray-800 mb-1">Ratio services/highlights</div>
+                        <div className="text-sm text-gray-600">
+                          57% des meilleurs échanges démarrent sur votre service
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Statistiques des coups par point */}
+            <div className="grid lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Coups par Point - Statistiques</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="bg-emerald-50 rounded-lg p-4 text-center">
+                      <div className="text-3xl font-bold text-emerald-600 mb-2">4.2</div>
+                      <div className="text-sm text-emerald-700 mb-1">Coups en moyenne par point</div>
+                      <div className="text-xs text-gray-600">Dans les meilleurs échanges</div>
+                    </div>
+                    
+                    <div className="bg-yellow-50 rounded-lg p-4 text-center">
+                      <div className="text-3xl font-bold text-yellow-600 mb-2">12</div>
+                      <div className="text-sm text-yellow-700 mb-1">Coups maximum par point</div>
+                      <div className="text-xs text-gray-600">Le plus long échange du match</div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6 bg-gradient-to-r from-emerald-50 to-yellow-50 rounded-lg p-4">
+                    <h4 className="font-semibold text-gray-800 mb-2">📊 Analyse des Échanges</h4>
+                    <p className="text-sm text-gray-700">
+                      Vos meilleurs moments viennent des échanges de moyenne longueur (4-6 coups). 
+                      Vous savez accélérer au bon moment sans précipiter.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Répartition des Points</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="bg-blue-50 rounded-lg p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium">Points courts (1-3 coups)</span>
+                        <span className="text-xl font-bold text-blue-600">4</span>
+                      </div>
+                      <div className="w-full bg-blue-200 rounded-full h-2">
+                        <div className="bg-blue-500 h-2 rounded-full" style={{width: '31%'}}></div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-emerald-50 rounded-lg p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium">Points moyens (4-7 coups)</span>
+                        <span className="text-xl font-bold text-emerald-600">6</span>
+                      </div>
+                      <div className="w-full bg-emerald-200 rounded-full h-2">
+                        <div className="bg-emerald-500 h-2 rounded-full" style={{width: '46%'}}></div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-purple-50 rounded-lg p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium">Points longs (8+ coups)</span>
+                        <span className="text-xl font-bold text-purple-600">3</span>
+                      </div>
+                      <div className="w-full bg-purple-200 rounded-full h-2">
+                        <div className="bg-purple-500 h-2 rounded-full" style={{width: '23%'}}></div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6 bg-purple-50 rounded-lg p-4">
+                    <h4 className="font-semibold text-purple-800 mb-2">🎯 Profil de Jeu</h4>
+                    <p className="text-sm text-purple-700">
+                      Vous excellez dans les échanges de durée moyenne. C'est votre zone de confort 
+                      où vous pouvez construire puis conclure efficacement.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Commentaire des meilleurs points */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Star className="w-5 h-5 text-yellow-500" />
+                  <span>Commentaire des Meilleurs Points du Match</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-gradient-to-r from-yellow-50 to-amber-50 rounded-lg p-6">
+                  <div className="space-y-6">
+                    <div className="bg-white rounded-lg p-5 border-l-4 border-yellow-500">
+                      <h4 className="font-bold text-yellow-800 mb-3">🏆 Point d'anthologie - 12 coups (8-5)</h4>
+                      <p className="text-gray-700 leading-relaxed mb-3">
+                        Le point le plus spectaculaire du match ! Parti sur un service lifté court, l'échange s'est développé 
+                        avec des variations de rythme exceptionnelles. Votre patience dans la construction puis votre 
+                        accélération au bon moment (10ème coup) ont fait la différence.
+                      </p>
+                      <div className="bg-yellow-50 p-3 rounded text-sm text-yellow-800">
+                        <strong>Moment clé :</strong> Votre coup droit croisé au 10ème échange qui a ouvert le terrain
+                      </div>
+                    </div>
+                    
+                    <div className="bg-white rounded-lg p-5 border-l-4 border-emerald-500">
+                      <h4 className="font-bold text-emerald-800 mb-3">⚡ Service gagnant direct (4-2)</h4>
+                      <p className="text-gray-700 leading-relaxed mb-3">
+                        Service lifté long suivi d'un coup droit à angle fermé. Votre adversaire, déstabilisé par l'effet, 
+                        a tenté une remise défensive que vous avez parfaitement anticipée pour conclure en deux coups.
+                      </p>
+                      <div className="bg-emerald-50 p-3 rounded text-sm text-emerald-800">
+                        <strong>Technique remarquable :</strong> Variation service + placement précis du coup gagnant
+                      </div>
+                    </div>
+                    
+                    <div className="bg-white rounded-lg p-5 border-l-4 border-blue-500">
+                      <h4 className="font-bold text-blue-800 mb-3">🛡️ Défense puis contre-attaque (10-7)</h4>
+                      <p className="text-gray-700 leading-relaxed mb-3">
+                        Point remarquable de patience ! Mis en difficulté par un smash adverse, vous avez enchainé 
+                        3 défenses hautes parfaites qui ont permis de retourner la situation. Votre contre-attaque 
+                        en revers a été décisive.
+                      </p>
+                      <div className="bg-blue-50 p-3 rounded text-sm text-blue-800">
+                        <strong>Mental de champion :</strong> Résistance sous pression + retournement de situation
+                      </div>
+                    </div>
+                    
+                    <div className="bg-white rounded-lg p-5 border-l-4 border-purple-500">
+                      <h4 className="font-bold text-purple-800 mb-3">🎯 Précision chirurgicale (11-8 - Match point)</h4>
+                      <p className="text-gray-700 leading-relaxed mb-3">
+                        Le point de la victoire ! Sur votre service, vous avez varié avec un service coupé court qui a forcé 
+                        une remise haute. Votre smash croisé, parfaitement placé près de la ligne, a scellé votre victoire.
+                      </p>
+                      <div className="bg-purple-50 p-3 rounded text-sm text-purple-800">
+                        <strong>Gestion parfaite :</strong> Service tactique + conclusion impeccable sur match point
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6 p-5 bg-gradient-to-r from-yellow-100 to-amber-100 rounded-lg border-2 border-yellow-300">
+                    <h4 className="font-bold text-gray-900 mb-3 flex items-center">
+                      <Trophy className="w-6 h-6 mr-2 text-yellow-500" />
+                      Bilan des Moments d'Exception
+                    </h4>
+                    <div className="grid md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="font-semibold text-gray-800 mb-2">🎖️ Qualités démontrées :</p>
+                        <ul className="space-y-1 text-gray-700">
+                          <li>• Patience et construction intelligente</li>
+                          <li>• Variations tactiques au service</li>
+                          <li>• Mental solide sous pression</li>
+                          <li>• Précision dans les moments décisifs</li>
+                        </ul>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-800 mb-2">📈 Progression visible :</p>
+                        <ul className="space-y-1 text-gray-700">
+                          <li>• Adaptation au jeu adverse</li>
+                          <li>• Gestion parfaite des points chauds</li>
+                          <li>• Equilibre défense/attaque</li>
+                          <li>• Conclusion efficace des opportunités</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
