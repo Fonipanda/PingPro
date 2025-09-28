@@ -719,7 +719,7 @@ const ResultsPage = ({ results }) => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Positionnement</CardTitle>
+                  <CardTitle>Positionnement et Déplacement</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {results.technical_analysis.positioning_analysis && (
@@ -739,6 +739,65 @@ const ResultsPage = ({ results }) => {
                 </CardContent>
               </Card>
             </div>
+
+            {/* TTNet Movement Analysis */}
+            {results.technical_analysis.movement_analysis && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Zap className="w-5 h-5 text-emerald-500" />
+                    <span>Analyse de Mouvement Avancée</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {results.technical_analysis.movement_analysis.ball_speed_analysis && (
+                      <div className="space-y-3">
+                        <h4 className="font-semibold text-gray-800">Vitesse de Balle</h4>
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center p-2 bg-emerald-50 rounded">
+                            <span className="text-sm text-gray-600">Vitesse moyenne</span>
+                            <span className="font-medium">
+                              {results.technical_analysis.movement_analysis.ball_speed_analysis.average_speed.toFixed(1)} px/frame
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center p-2 bg-blue-50 rounded">
+                            <span className="text-sm text-gray-600">Vitesse maximale</span>
+                            <span className="font-medium">
+                              {results.technical_analysis.movement_analysis.ball_speed_analysis.max_speed.toFixed(1)} px/frame
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center p-2 bg-purple-50 rounded">
+                            <span className="text-sm text-gray-600">Consistance</span>
+                            <span className="font-medium">
+                              {results.technical_analysis.movement_analysis.ball_speed_analysis.speed_consistency.toFixed(1)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="space-y-3">
+                      <h4 className="font-semibold text-gray-800">Qualité du Suivi</h4>
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center p-2 bg-orange-50 rounded">
+                          <span className="text-sm text-gray-600">Confiance tracking</span>
+                          <span className="font-medium">
+                            {(results.technical_analysis.movement_analysis.tracking_confidence * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                        <div className="p-3 bg-gray-50 rounded">
+                          <p className="text-sm text-gray-600 mb-1">Qualité générale</p>
+                          <p className="font-medium text-gray-800">
+                            {results.technical_analysis.movement_analysis.movement_quality}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Areas for improvement */}
             {results.performance_metrics.improvement_areas.length > 0 && (
