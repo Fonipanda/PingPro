@@ -898,7 +898,210 @@ const ResultsPage = ({ results }) => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="technique" className="space-y-6">
+          <TabsContent value="strengths" className="space-y-8">
+            {/* Vidéo points forts */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <TrendingUp className="w-5 h-5 text-emerald-500" />
+                  <span>Vidéo de vos Points Forts</span>
+                  <Badge className="bg-emerald-100 text-emerald-800 text-xs">
+                    Meilleurs moments
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-gradient-to-r from-emerald-100 to-blue-100 rounded-lg p-8 text-center">
+                  <Star className="w-16 h-16 mx-auto mb-4 text-emerald-500" />
+                  <p className="text-gray-700 mb-4">
+                    Compilation de vos meilleures actions • Services gagnants et coups décisifs
+                  </p>
+                  <Button className="bg-emerald-500 hover:bg-emerald-600">
+                    <PlayCircle className="w-4 h-4 mr-2" />
+                    Voir mes points forts
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Statistiques des services - Points forts */}
+            <div className="grid lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Taux de Réussite des Services</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    <div className="text-center">
+                      <div className="text-5xl font-bold text-emerald-600 mb-2">75%</div>
+                      <div className="text-lg text-gray-600 mb-4">Taux de réussite global</div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-emerald-50 rounded-lg p-3">
+                          <div className="text-2xl font-bold text-emerald-600">75%</div>
+                          <div className="text-xs text-emerald-700">Vous</div>
+                        </div>
+                        <div className="bg-red-50 rounded-lg p-3">
+                          <div className="text-2xl font-bold text-red-600">45%</div>
+                          <div className="text-xs text-red-700">Adversaire</div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-emerald-50 rounded-lg p-4">
+                      <h4 className="font-semibold text-emerald-800 mb-2">🎯 Excellence au Service</h4>
+                      <p className="text-sm text-emerald-700">
+                        Domination claire dans cette phase ! Avec 30% d'écart sur votre adversaire, 
+                        vos services sont votre arme principale. Continuez à exploiter cet avantage.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Détail des Services</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="bg-emerald-50 rounded-lg p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-semibold">Services remportés (Vous)</span>
+                        <span className="text-2xl font-bold text-emerald-600">9</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Services remportés (Adversaire)</span>
+                        <span className="text-lg font-semibold text-gray-500">4</span>
+                      </div>
+                    </div>
+
+                    <div className="bg-blue-50 rounded-lg p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-semibold">Services ratés (Vous)</span>
+                        <span className="text-2xl font-bold text-blue-600">2</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Services ratés (Adversaire)</span>
+                        <span className="text-lg font-semibold text-gray-500">6</span>
+                      </div>
+                    </div>
+
+                    <div className="bg-yellow-50 rounded-lg p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-semibold">Services gagnants (Vous)</span>
+                        <span className="text-2xl font-bold text-yellow-600">5</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Services gagnants (Adversaire)</span>
+                        <span className="text-lg font-semibold text-gray-500">1</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6 p-4 bg-gradient-to-r from-emerald-50 to-yellow-50 rounded-lg">
+                    <h4 className="font-semibold text-gray-800 mb-2">⭐ Analyse Détaillée</h4>
+                    <p className="text-sm text-gray-700">
+                      Statistiques exceptionnelles ! Avec 5 services gagnants directs et seulement 2 ratés, 
+                      vous maîtrisez parfaitement cette phase. Votre adversaire n'a marqué qu'1 seul service gagnant.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Points forts identifiés */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Trophy className="w-5 h-5 text-yellow-500" />
+                  <span>Ce que vous avez fait de bien</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-gradient-to-r from-yellow-50 to-emerald-50 rounded-lg p-6">
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div className="bg-white rounded-lg p-4 border-l-4 border-emerald-500">
+                        <h4 className="font-semibold text-emerald-800 mb-2">🏓 Maîtrise du Service</h4>
+                        <p className="text-sm text-gray-700">
+                          Votre service est votre point fort principal avec 75% de réussite. 
+                          Vous variez efficacement placement et effets, créant des opportunités constantes.
+                        </p>
+                      </div>
+                      
+                      <div className="bg-white rounded-lg p-4 border-l-4 border-blue-500">
+                        <h4 className="font-semibold text-blue-800 mb-2">🎯 Précision technique</h4>
+                        <p className="text-sm text-gray-700">
+                          Votre consistance technique ({results.performance_metrics.technical_consistency.toFixed(0)}%) 
+                          vous permet de maintenir un niveau élevé tout au long du match.
+                        </p>
+                      </div>
+                      
+                      <div className="bg-white rounded-lg p-4 border-l-4 border-purple-500">
+                        <h4 className="font-semibold text-purple-800 mb-2">🧠 Intelligence tactique</h4>
+                        <p className="text-sm text-gray-700">
+                          Excellent positionnement ({results.performance_metrics.positioning_score.toFixed(0)}%) 
+                          et adaptation à votre adversaire. Vous savez quand attaquer et quand défendre.
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div className="bg-white rounded-lg p-4 border-l-4 border-yellow-500">
+                        <h4 className="font-semibold text-yellow-800 mb-2">⚡ Coups gagnants</h4>
+                        <p className="text-sm text-gray-700">
+                          5 services gagnants directs démontrent votre capacité à conclure les points rapidement 
+                          quand l'occasion se présente.
+                        </p>
+                      </div>
+                      
+                      <div className="bg-white rounded-lg p-4 border-l-4 border-indigo-500">
+                        <h4 className="font-semibold text-indigo-800 mb-2">🛡️ Solidité défensive</h4>
+                        <p className="text-sm text-gray-700">
+                          Très peu de fautes non-forcées. Vous restez patient dans les longs échanges 
+                          et forcez votre adversaire à prendre des risques.
+                        </p>
+                      </div>
+                      
+                      <div className="bg-white rounded-lg p-4 border-l-4 border-pink-500">
+                        <h4 className="font-semibold text-pink-800 mb-2">📈 Progression continue</h4>
+                        <p className="text-sm text-gray-700">
+                          Vous vous êtes bonifié au fil du match, montrant une excellente capacité d'adaptation 
+                          et de lecture du jeu adverse.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6 p-4 bg-white rounded-lg border-2 border-yellow-200">
+                    <h4 className="font-bold text-gray-900 mb-3 flex items-center">
+                      <Award className="w-5 h-5 mr-2 text-yellow-500" />
+                      Récapitulatif de vos Forces
+                    </h4>
+                    <ul className="space-y-2 text-sm text-gray-700">
+                      <li className="flex items-center">
+                        <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
+                        Service exceptionnel (75% de réussite vs 45% adversaire)
+                      </li>
+                      <li className="flex items-center">
+                        <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
+                        Régularité technique remarquable ({results.performance_metrics.technical_consistency.toFixed(0)}%)
+                      </li>
+                      <li className="flex items-center">
+                        <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
+                        Intelligence tactique et adaptation (Score: {results.performance_metrics.positioning_score.toFixed(0)}%)
+                      </li>
+                      <li className="flex items-center">
+                        <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
+                        Gestion parfaite des moments clés (5 coups gagnants)
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
             <div className="grid lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
