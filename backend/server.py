@@ -85,6 +85,9 @@ class PerformanceMetrics(BaseModel):
     timing_accuracy: float
     overall_score: float
     improvement_areas: List[str]
+    ball_tracking_quality: Optional[str] = None
+    rally_analysis: Optional[Dict[str, Any]] = None
+    event_detection: Optional[Dict[str, Any]] = None
 
 class AnalysisResult(BaseModel):
     analysis_id: str
