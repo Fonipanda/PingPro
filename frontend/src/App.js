@@ -554,6 +554,114 @@ const ResultsPage = ({ results }) => {
               </Card>
             </div>
 
+            {/* TTNet Analysis Results */}
+            {results.technical_analysis.ttnet_analysis && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Zap className="w-5 h-5 text-emerald-500" />
+                    <span>Analyse Vidéo Avancée (TTNet)</span>
+                    <Badge className="bg-emerald-100 text-emerald-800 text-xs">
+                      IA Avancée
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="bg-gradient-to-r from-emerald-50 to-blue-50 rounded-lg p-4">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center">
+                          <Target className="w-3 h-3 text-white" />
+                        </div>
+                        <span className="font-medium text-sm">Suivi de Balle</span>
+                      </div>
+                      <p className="text-lg font-bold text-gray-900">
+                        {(results.technical_analysis.ttnet_analysis.ball_detection_rate * 100).toFixed(0)}%
+                      </p>
+                      <p className="text-xs text-gray-600">Précision détection</p>
+                    </div>
+
+                    {results.performance_metrics.event_detection && (
+                      <>
+                        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                              <PlayCircle className="w-3 h-3 text-white" />
+                            </div>
+                            <span className="font-medium text-sm">Rebonds</span>
+                          </div>
+                          <p className="text-lg font-bold text-gray-900">
+                            {results.performance_metrics.event_detection.ball_bounce || 0}
+                          </p>
+                          <p className="text-xs text-gray-600">Détectés</p>
+                        </div>
+
+                        <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <div className="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
+                              <Star className="w-3 h-3 text-white" />
+                            </div>
+                            <span className="font-medium text-sm">Services</span>
+                          </div>
+                          <p className="text-lg font-bold text-gray-900">
+                            {results.performance_metrics.event_detection.serve || 0}
+                          </p>
+                          <p className="text-xs text-gray-600">Identifiés</p>
+                        </div>
+                      </>
+                    )}
+
+                    <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-lg p-4">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center">
+                          <Award className="w-3 h-3 text-white" />
+                        </div>
+                        <span className="font-medium text-sm">Qualité</span>
+                      </div>
+                      <p className="text-lg font-bold text-gray-900">
+                        {results.performance_metrics.ball_tracking_quality || "Bonne"}
+                      </p>
+                      <p className="text-xs text-gray-600">Suivi vidéo</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Rally Analysis */}
+            {results.performance_metrics.rally_analysis && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <BarChart3 className="w-5 h-5" />
+                    <span>Analyse des Échanges</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div className="text-center p-4 bg-gray-50 rounded-lg">
+                      <p className="text-2xl font-bold text-emerald-600">
+                        {results.performance_metrics.rally_analysis.average_rally_length.toFixed(1)}
+                      </p>
+                      <p className="text-sm text-gray-600">Longueur moyenne des échanges</p>
+                    </div>
+                    <div className="text-center p-4 bg-gray-50 rounded-lg">
+                      <p className="text-2xl font-bold text-blue-600">
+                        {results.performance_metrics.rally_analysis.total_rallies}
+                      </p>
+                      <p className="text-sm text-gray-600">Total échanges</p>
+                    </div>
+                    <div className="text-center p-4 bg-gray-50 rounded-lg">
+                      <p className="text-lg font-semibold text-purple-600">
+                        {results.performance_metrics.rally_analysis.game_style}
+                      </p>
+                      <p className="text-sm text-gray-600">Style de jeu</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Video Info */}
             <Card>
               <CardHeader>
@@ -577,7 +685,7 @@ const ResultsPage = ({ results }) => {
                     <p className="font-semibold">{results.video_info.resolution}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Confiance</p>
+                    <p className="text-sm text-gray-600">Confiance IA</p>
                     <p className="font-semibold">{(results.confidence_score * 100).toFixed(0)}%</p>
                   </div>
                 </div>
