@@ -366,21 +366,30 @@ def identify_highlights_timestamps(analysis_data: Dict[str, Any], video_duration
 
 # Background Processing
 async def process_video_analysis(analysis_id: str, video_path: str, params: AnalysisRequest):
-    """Background task for processing video analysis"""
+    """Background task for processing video analysis with TTNet integration"""
     try:
-        logger.info(f"Starting analysis {analysis_id}")
+        logger.info(f"Starting enhanced analysis with TTNet for {analysis_id}")
         
         # Update status
         analysis_status[analysis_id].status = "processing"
-        analysis_status[analysis_id].progress = 10.0
-        analysis_status[analysis_id].current_step = "Extraction des images..."
+        analysis_status[analysis_id].progress = 5.0
+        analysis_status[analysis_id].current_step = "Analyse vidéo avancée en cours..."
         
-        # Extract frames
-        frames = await extract_video_frames(video_path)
-        analysis_status[analysis_id].progress = 30.0
-        analysis_status[analysis_id].current_step = "Analyse IA en cours..."
+        # Step 1: TTNet Advanced Analysis
+        logger.info(f"Running TTNet analysis for {analysis_id}")
+        ttnet_results = await asyncio.get_event_loop().run_in_executor(
+            None, analyze_video_with_ttnet, video_path, 2  # 2 FPS for faster processing
+        )
         
-        # Get video info
+        analysis_status[analysis_id].progress = 40.0
+        analysis_status[analysis_id].current_step = "Extraction des métriques..."
+        
+        # Step 2: Extract frames for LLM analysis (reduced number due to TTNet analysis)
+        frames = await extract_video_frames(video_path, target_fps=1)  # Reduced to 1 FPS
+        analysis_status[analysis_id].progress = 50.0
+        analysis_status[analysis_id].current_step = "Analyse IA des techniques..."
+        
+        # Step 3: Get video info
         cap = cv2.VideoCapture(video_path)
         fps = cap.get(cv2.CAP_PROP_FPS)
         frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -396,29 +405,30 @@ async def process_video_analysis(analysis_id: str, video_path: str, params: Anal
             resolution=f"{width}x{height}"
         )
         
-        # Analyze with AI
-        analysis_data = await analyze_frames_with_vision(frames, params)
-        analysis_status[analysis_id].progress = 70.0
-        analysis_status[analysis_id].current_step = "Génération des conseils..."
+        # Step 4: LLM Analysis (enhanced with TTNet insights)
+        analysis_data = await analyze_frames_with_vision_enhanced(frames, params, ttnet_results)
+        analysis_status[analysis_id].progress = 75.0
+        analysis_status[analysis_id].current_step = "Génération des conseils personnalisés..."
         
-        # Generate recommendations
-        recommendations = await generate_coaching_recommendations(analysis_data, params)
+        # Step 5: Generate comprehensive recommendations
+        recommendations = await generate_enhanced_coaching_recommendations(analysis_data, params, ttnet_results)
         
-        # Calculate metrics
-        performance_metrics = calculate_performance_metrics(analysis_data)
+        # Step 6: Calculate enhanced metrics
+        performance_metrics = calculate_enhanced_performance_metrics(analysis_data, ttnet_results)
         
-        # Identify highlights
-        highlights = identify_highlights_timestamps(analysis_data, duration)
+        # Step 7: Generate highlights from TTNet events
+        highlights = generate_highlights_from_ttnet(ttnet_results, duration)
         
         analysis_status[analysis_id].progress = 90.0
-        analysis_status[analysis_id].current_step = "Finalisation..."
+        analysis_status[analysis_id].current_step = "Finalisation de l'analyse..."
         
-        # Create technical analysis
+        # Create enhanced technical analysis
         technical_analysis = TechnicalAnalysis(
             stroke_analysis=analysis_data.get("stroke_analysis", {}),
             positioning_analysis=analysis_data.get("positioning_analysis", {}),
             timing_analysis=analysis_data.get("timing_analysis", {}),
-            movement_analysis={"quality": "Analysé"}
+            movement_analysis=extract_movement_analysis(ttnet_results),
+            ttnet_analysis=ttnet_results.get("match_statistics", {})
         )
         
         # Store results
@@ -429,25 +439,25 @@ async def process_video_analysis(analysis_id: str, video_path: str, params: Anal
             performance_metrics=performance_metrics,
             recommendations=recommendations,
             highlights_timestamps=highlights,
-            confidence_score=0.85
+            confidence_score=calculate_enhanced_confidence_score(ttnet_results, analysis_data)
         )
         
         analysis_results[analysis_id] = result
         analysis_status[analysis_id].status = "completed"
         analysis_status[analysis_id].progress = 100.0
         analysis_status[analysis_id].completed_at = datetime.utcnow()
-        analysis_status[analysis_id].current_step = "Terminé !"
+        analysis_status[analysis_id].current_step = "Analyse terminée avec succès !"
         
         # Cleanup
         if os.path.exists(video_path):
             os.remove(video_path)
             
-        logger.info(f"Analysis {analysis_id} completed successfully")
+        logger.info(f"Enhanced analysis {analysis_id} completed successfully with TTNet")
         
     except Exception as e:
-        logger.error(f"Analysis failed for {analysis_id}: {str(e)}")
+        logger.error(f"Enhanced analysis failed for {analysis_id}: {str(e)}")
         analysis_status[analysis_id].status = "failed"
-        analysis_status[analysis_id].error_message = f"Erreur lors de l'analyse: {str(e)}"
+        analysis_status[analysis_id].error_message = f"Erreur lors de l'analyse avancée: {str(e)}"
         
         # Cleanup on error
         if os.path.exists(video_path):
