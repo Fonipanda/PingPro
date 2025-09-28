@@ -874,9 +874,17 @@ async def get_analysis_results(analysis_id: str):
     return analysis_results[analysis_id]
 
 @api_router.options("/{path:path}")
-async def handle_options():
+async def handle_options(path: str):
     """Handle OPTIONS requests for CORS"""
-    return JSONResponse(content={"message": "OK"})
+    return JSONResponse(
+        content={"message": "OK"},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Max-Age": "86400"
+        }
+    )
 
 @api_router.get("/")
 async def root():
