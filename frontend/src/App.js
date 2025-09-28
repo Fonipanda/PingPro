@@ -1578,45 +1578,6 @@ const ResultsPage = ({ results }) => {
               </CardContent>
             </Card>
           </TabsContent>
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Video className="w-5 h-5" />
-                  <span>Moments clés identifiés</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {results.highlights_timestamps.length > 0 ? (
-                  <div className="space-y-4">
-                    {results.highlights_timestamps.map((timestamp, index) => (
-                      <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <PlayCircle className="w-5 h-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <p className="font-semibold">Moment clé #{index + 1}</p>
-                            <p className="text-sm text-gray-600">
-                              À {Math.floor(timestamp / 60)}:{Math.floor(timestamp % 60).toString().padStart(2, '0')}
-                            </p>
-                          </div>
-                        </div>
-                        <Button size="sm" variant="outline">
-                          <PlayCircle className="w-4 h-4 mr-2" />
-                          Voir
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <Video className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                    <p className="text-gray-500">Aucun moment clé identifié</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
       </div>
     </div>
