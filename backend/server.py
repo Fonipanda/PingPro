@@ -1227,7 +1227,7 @@ async def process_video_analysis_with_tt3d(file_path: str, params: AnalysisReque
         
         # Phase 5: Generate TT3D-Enhanced Recommendations
         analysis_status[analysis_id].update({"stage": "Generating physics-based coaching recommendations", "progress": 80})
-        enhanced_recommendations = await generate_tt3d_coaching_recommendations(llm_analysis, params, tt3d_results, ttnet_results)
+        enhanced_recommendations = await generate_lexicon_based_recommendations(llm_analysis, params, ttnet_results, video_processing_results)
         
         # Phase 6: Calculate TT3D Performance Metrics
         analysis_status[analysis_id].update({"stage": "Calculating 3D performance metrics", "progress": 90})
