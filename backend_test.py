@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """
-PingPro Backend API Testing Suite
-Tests all backend endpoints for the table tennis video analysis application
+PingPro Backend API Testing Suite - Enhanced TTNet Analysis Testing
+Tests all backend endpoints with focus on TTNet analysis improvements:
+- Enhanced skill assessment functions
+- Personalized recommendations based on real analysis
+- Video quality evaluation with specific feedback
+- Realistic technical insights calculation
 """
 
 import requests
