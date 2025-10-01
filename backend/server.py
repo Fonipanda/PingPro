@@ -280,6 +280,10 @@ async def analyze_frames_with_vision_enhanced(frames_data: List[str], params: An
     technical_insights = ttnet_results.get("technical_insights", {})
     
     # Enhanced prompt with real TTNet analysis data
+    skill_assessment = technical_insights.get("skill_assessment", {})
+    match_characteristics = technical_insights.get("match_characteristics", {})
+    video_quality = technical_insights.get("video_quality_metrics", {})
+    
     estimated_level = skill_assessment.get('estimated_level', params.skill_level)
     technical_consistency = skill_assessment.get('technical_consistency', 70)
     evidence_points = skill_assessment.get('evidence_points', [])
