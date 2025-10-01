@@ -480,6 +480,25 @@ const AnalysisPage = ({ analysisId }) => {
 // ResultsPage Component
 const ResultsPage = ({ results }) => {
   const [activeTab, setActiveTab] = useState('overview');
+  const [playingVideo, setPlayingVideo] = useState(null);
+
+  const handleVideoPlay = async (videoType) => {
+    try {
+      const response = await axios.get(`${API}/analysis/${results.analysis_id}/video/${videoType}`);
+      if (response.status === 200) {
+        // For now, show an alert that the video would play
+        // In a real implementation, this would open a video player
+        alert(`Lecture de la vidéo: ${videoType}. La fonctionnalité sera bientôt disponible avec le player vidéo.`);
+        setPlayingVideo(videoType);
+      }
+    } catch (error) {
+      if (error.response?.status === 404) {
+        alert('Vidéo non disponible. La compilation est en cours de traitement.');
+      } else {
+        alert('Erreur lors du chargement de la vidéo.');
+      }
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-blue-50">
