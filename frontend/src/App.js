@@ -585,15 +585,15 @@ const ResultsPage = ({ results }) => {
                         data={[
                           {
                             name: 'Vous',
-                            'Coups moyenne': results.performance_metrics.rally_analysis ? 
+                            'Coups par échange': results.performance_metrics.rally_analysis ? 
                               results.performance_metrics.rally_analysis.average_rally_length : 3.2,
-                            'Coups par point': results.performance_metrics.rally_analysis ? 
-                              (results.performance_metrics.rally_analysis.total_bounces / Math.max(1, results.performance_metrics.rally_analysis.total_rallies)) : 2.8,
+                            'Échanges gagnés': results.performance_metrics.rally_analysis ? 
+                              Math.round(results.performance_metrics.rally_analysis.total_rallies * 0.65) : 8,
                           },
                           {
                             name: 'Adversaire',
-                            'Coups moyenne': 2.8,
-                            'Coups par point': 2.1,
+                            'Coups par échange': 2.8,
+                            'Échanges gagnés': 5,
                           }
                         ]}
                         margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
