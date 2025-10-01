@@ -1217,7 +1217,7 @@ def generate_video_hash(video_path: str) -> str:
             # Read first 1MB for hashing (performance vs uniqueness balance)
             content = f.read(1024 * 1024)
             return hashlib.md5(content).hexdigest()[:16]
-    except:
+    except Exception:
         return hashlib.md5(video_path.encode()).hexdigest()[:16]
 
 def generate_default_analysis_results(video_path: str = "unknown"):
