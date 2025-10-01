@@ -1193,6 +1193,119 @@ def identify_highlights_timestamps(analysis_data: Dict[str, Any], video_duration
     return highlights
 
 # Background Processing
+async def process_video_analysis_with_tt3d(file_path: str, params: AnalysisRequest, analysis_id: str, background_tasks: BackgroundTasks):
+    """Advanced video analysis with TT3D integration for comprehensive 3D reconstruction"""
+    try:
+        # Update status
+        analysis_status[analysis_id] = {
+            "status": "processing", 
+            "stage": "Initializing TT3D advanced analysis", 
+            "progress": 5,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        
+        # Phase 1: TT3D Advanced Analysis
+        analysis_status[analysis_id].update({"stage": "TT3D camera calibration and 3D reconstruction", "progress": 15})
+        tt3d_analyzer = TT3DAdvancedAnalyzer()
+        tt3d_results = tt3d_analyzer.analyze_video(file_path)
+        
+        # Phase 2: TTNet Analysis (legacy support)
+        analysis_status[analysis_id].update({"stage": "TTNet supplementary analysis", "progress": 30})
+        ttnet_results = analyze_video_with_ttn(file_path)
+        
+        # Phase 3: Video Processing with Lexicon
+        analysis_status[analysis_id].update({"stage": "Processing video timeline with lexicon", "progress": 45})
+        video_processing_results = process_video_with_timeline(file_path, analysis_status, analysis_id)
+        
+        # Phase 4: Enhanced LLM Analysis with TT3D Context
+        analysis_status[analysis_id].update({"stage": "Extracting frames for AI analysis", "progress": 60})
+        frames_data = extract_frames_for_analysis(file_path, max_frames=8)
+        
+        analysis_status[analysis_id].update({"stage": "Analyzing with AI Vision + TT3D insights", "progress": 70})
+        llm_analysis = await analyze_frames_with_vision_tt3d_enhanced(frames_data, params, tt3d_results, ttnet_results, video_processing_results)
+        
+        # Phase 5: Generate TT3D-Enhanced Recommendations
+        analysis_status[analysis_id].update({"stage": "Generating physics-based coaching recommendations", "progress": 80})
+        enhanced_recommendations = await generate_tt3d_coaching_recommendations(llm_analysis, params, tt3d_results, ttnet_results)
+        
+        # Phase 6: Calculate TT3D Performance Metrics
+        analysis_status[analysis_id].update({"stage": "Calculating 3D performance metrics", "progress": 90})
+        performance_metrics = calculate_tt3d_performance_metrics(llm_analysis, tt3d_results, ttnet_results, video_processing_results)
+        
+        # Phase 7: Video Compilation with TT3D Insights
+        analysis_status[analysis_id].update({"stage": "Compiling videos with 3D analysis", "progress": 95})
+        video_compilations = compile_videos_with_tt3d(video_processing_results, tt3d_results, analysis_id)
+        
+        # Create final result with TT3D data
+        final_result = AnalysisResult(
+            analysis_id=analysis_id,
+            video_info={
+                "filename": Path(file_path).name,
+                "duration_seconds": ttnet_results.get("video_duration", 0),
+                "frame_count": ttnet_results.get("total_frames", 0),
+                "resolution": ttnet_results.get("resolution", "Unknown"),
+                "camera_quality": tt3d_results.quality_assessment.get('camera_calibration_quality', 'good'),
+                "tracking_quality": tt3d_results.quality_assessment.get('ball_tracking_quality', 'good')
+            },
+            performance_metrics=performance_metrics,
+            recommendations=enhanced_recommendations,
+            detailed_analysis=llm_analysis,
+            coaching_insights={
+                "strengths": llm_analysis.get("strengths", []),
+                "weaknesses": llm_analysis.get("improvement_areas", []),
+                "technique_analysis": llm_analysis.get("stroke_analysis", {}),
+                "tactical_advice": enhanced_recommendations[:3],
+                "physics_insights": tt3d_results.tactical_insights,
+                "3d_metrics": tt3d_results.physics_metrics
+            },
+            video_compilations=video_compilations,
+            ttnet_insights=ttnet_results.get("technical_insights", {}),
+            lexicon_analysis=video_processing_results.get("technical_analysis", {}),
+            tt3d_analysis={
+                "ball_trajectory_3d": {
+                    "trajectory_length": len(tt3d_results.ball_trajectory.positions_3d),
+                    "bounce_count": len(tt3d_results.ball_trajectory.bounce_points),
+                    "physics_consistency": tt3d_results.ball_trajectory.physics_consistency,
+                    "max_speed": tt3d_results.physics_metrics.get("max_speed", 0),
+                    "avg_speed": tt3d_results.physics_metrics.get("avg_speed", 0),
+                    "spin_analysis": {
+                        "max_spin": tt3d_results.physics_metrics.get("max_spin", 0),
+                        "avg_spin": tt3d_results.physics_metrics.get("avg_spin", 0)
+                    }
+                },
+                "camera_calibration": {
+                    "reprojection_error": tt3d_results.camera_params.reprojection_error,
+                    "focal_length": tt3d_results.camera_params.focal_length,
+                    "calibration_quality": tt3d_results.quality_assessment.get('camera_calibration_quality')
+                },
+                "quality_assessment": tt3d_results.quality_assessment,
+                "tactical_insights": tt3d_results.tactical_insights,
+                "event_timeline": tt3d_results.event_timeline
+            }
+        )
+        
+        # Store result
+        analysis_results[analysis_id] = final_result
+        
+        # Update final status
+        analysis_status[analysis_id] = {
+            "status": "completed", 
+            "stage": "TT3D analysis complete", 
+            "progress": 100,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        
+        logger.info(f"TT3D advanced video analysis completed successfully for {analysis_id}")
+        
+    except Exception as e:
+        logger.error(f"Error in TT3D video analysis: {str(e)}")
+        analysis_status[analysis_id] = {
+            "status": "error", 
+            "stage": f"TT3D Error: {str(e)}", 
+            "progress": 0,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+
 async def process_video_analysis(analysis_id: str, video_path: str, params: AnalysisRequest):
     """Background task for processing video analysis with TTNet + Video Processor integration"""
     try:
