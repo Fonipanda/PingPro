@@ -1464,7 +1464,7 @@ const ResultsPage = ({ results }) => {
                   <div className="bg-purple-50 rounded-lg p-4 text-center">
                     <div className="text-3xl font-bold text-purple-600 mb-2">85%</div>
                     <div className="text-sm text-purple-700 mb-1">Taux de victoire</div>
-                    <div className="text-xs text-gray-600">Sur les meilleurs rallies</div>
+                    <div className="text-xs text-gray-600">Sur les meilleurs échanges</div>
                   </div>
                 </div>
                 
