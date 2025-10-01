@@ -1236,7 +1236,8 @@ async def process_video_analysis_with_tt3d(file_path: str, params: AnalysisReque
         analysis_status[analysis_id].progress = 60.0
         frames_data = await extract_video_frames(file_path, target_fps=1)
         
-        analysis_status[analysis_id].update({"stage": "Analyzing with AI Vision + TT3D insights", "progress": 70})
+        analysis_status[analysis_id].current_step = "Analyzing with AI Vision + TT3D insights"
+        analysis_status[analysis_id].progress = 70.0
         llm_analysis = await analyze_frames_with_vision_enhanced_lexicon(frames_data, params, ttnet_results, video_processing_results)
         
         # Phase 5: Generate TT3D-Enhanced Recommendations
