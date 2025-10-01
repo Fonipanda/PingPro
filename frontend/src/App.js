@@ -603,8 +603,8 @@ const ResultsPage = ({ results }) => {
                         <YAxis />
                         <Tooltip />
                         <Legend />
-                        <Bar dataKey="Coups moyenne" fill="#10b981" />
-                        <Bar dataKey="Coups par point" fill="#3b82f6" />
+                        <Bar dataKey="Coups par échange" fill="#10b981" />
+                        <Bar dataKey="Échanges gagnés" fill="#3b82f6" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
