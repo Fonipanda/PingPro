@@ -789,37 +789,70 @@ const ResultsPage = ({ results }) => {
               </CardContent>
             </Card>
 
-            {/* Statistiques des services - Points forts */}
+            {/* Radar Chart Performance et Services */}
             <div className="grid lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Taux de Réussite des Services</CardTitle>
+                  <CardTitle>Performance Radar - Points Forts</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-6">
-                    <div className="text-center">
-                      <div className="text-5xl font-bold text-emerald-600 mb-2">75%</div>
-                      <div className="text-lg text-gray-600 mb-4">Taux de réussite global</div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-emerald-50 rounded-lg p-3">
-                          <div className="text-2xl font-bold text-emerald-600">75%</div>
-                          <div className="text-xs text-emerald-700">Vous</div>
-                        </div>
-                        <div className="bg-red-50 rounded-lg p-3">
-                          <div className="text-2xl font-bold text-red-600">45%</div>
-                          <div className="text-xs text-red-700">Adversaire</div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-emerald-50 rounded-lg p-4">
-                      <h4 className="font-semibold text-emerald-800 mb-2">🎯 Excellence au Service</h4>
-                      <p className="text-sm text-emerald-700">
-                        Domination claire dans cette phase ! Avec 30% d'écart sur votre adversaire, 
-                        vos services sont votre arme principale. Continuez à exploiter cet avantage.
-                      </p>
-                    </div>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RadarChart data={[
+                        {
+                          subject: 'Service',
+                          'Vous': 85,
+                          'Adversaire': 45,
+                          fullMark: 100,
+                        },
+                        {
+                          subject: 'Technique',
+                          'Vous': Math.round(results.performance_metrics.technical_consistency),
+                          'Adversaire': 65,
+                          fullMark: 100,
+                        },
+                        {
+                          subject: 'Positionnement',
+                          'Vous': Math.round(results.performance_metrics.positioning_score),
+                          'Adversaire': 60,
+                          fullMark: 100,
+                        },
+                        {
+                          subject: 'Timing',
+                          'Vous': Math.round(results.performance_metrics.timing_accuracy),
+                          'Adversaire': 55,
+                          fullMark: 100,
+                        },
+                        {
+                          subject: 'Régularité',
+                          'Vous': 80,
+                          'Adversaire': 50,
+                          fullMark: 100,
+                        },
+                        {
+                          subject: 'Tactique',
+                          'Vous': 75,
+                          'Adversaire': 65,
+                          fullMark: 100,
+                        },
+                      ]}>
+                        <PolarGrid />
+                        <PolarAngleAxis dataKey="subject" />
+                        <PolarRadiusAxis angle={90} domain={[0, 100]} />
+                        <Radar name="Vous" dataKey="Vous" stroke="#10b981" fill="#10b981" fillOpacity={0.3} />
+                        <Radar name="Adversaire" dataKey="Adversaire" stroke="#ef4444" fill="#ef4444" fillOpacity={0.1} />
+                        <Legend />
+                        <Tooltip />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  <div className="mt-4 p-4 bg-emerald-50 rounded-lg">
+                    <h4 className="font-semibold text-emerald-800 mb-2">🎯 Excellence Globale</h4>
+                    <p className="text-sm text-emerald-700">
+                      Vous dominez dans toutes les catégories ! Votre service (85%) et votre technique 
+                      ({results.performance_metrics.technical_consistency.toFixed(0)}%) sont vos atouts majeurs.
+                    </p>
                   </div>
                 </CardContent>
               </Card>
