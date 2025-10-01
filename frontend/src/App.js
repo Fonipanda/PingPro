@@ -832,7 +832,10 @@ const ResultsPage = ({ results }) => {
                   <p className="text-gray-700 mb-4">
                     Compilation de vos meilleures actions • Services gagnants et coups décisifs
                   </p>
-                  <Button className="bg-emerald-500 hover:bg-emerald-600">
+                  <Button 
+                    className="bg-emerald-500 hover:bg-emerald-600"
+                    onClick={() => handleVideoPlay('strengths')}
+                  >
                     <PlayCircle className="w-4 h-4 mr-2" />
                     Voir mes points forts
                   </Button>
