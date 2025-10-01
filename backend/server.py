@@ -611,6 +611,10 @@ def calculate_tt3d_performance_metrics(analysis_data: Dict[str, Any], tt3d_resul
         event_detection=ttnet_results.get("match_statistics", {}).get("event_summary", {})
     )
 
+def compile_videos(video_processing_results: Dict[str, Any], analysis_id: str) -> Optional[Dict[str, Optional[str]]]:
+    """Base video compilation function"""
+    return video_processing_results.get("compilations", {})
+
 def compile_videos_with_tt3d(video_processing_results: Dict[str, Any], tt3d_results: AdvancedAnalysisResult, analysis_id: str) -> Optional[Dict[str, Optional[str]]]:
     """Enhanced video compilation using TT3D event timeline"""
     
