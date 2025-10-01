@@ -14,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 
 class PingProAPITester:
-    def __init__(self, base_url="https://tabletennispro.preview.emergentagent.com"):
+    def __init__(self, base_url="https://paddle-vision.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.tests_run = 0
