@@ -58,8 +58,18 @@ class RealAnalysisValidator:
         try:
             from ttnet_analysis import analyze_video_with_ttn, TTNetAnalyzer
             
-            # Create a test video
-            test_video = self.create_test_video(1, 100)
+            # Get existing test videos
+            test_videos = self.get_test_videos()
+            if not test_videos:
+                self.log_test(
+                    "Real Analysis Function Usage",
+                    False,
+                    "No test videos available"
+                )
+                return False, None
+            
+            # Use first available video
+            test_video = test_videos[0]
             
             # Call the real analysis function
             results = analyze_video_with_ttn(test_video)
@@ -97,8 +107,6 @@ class RealAnalysisValidator:
                 )
                 success = False
             
-            # Cleanup
-            os.unlink(test_video)
             return success, results if success else None
             
         except Exception as e:
