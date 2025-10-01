@@ -90,3 +90,4 @@ backend/uploads/60247169-82b0-4850-ba03-456b435322d4.mov
 *.env
 *.env.*
 frontend/node_modules/.cache/default-development/0.pack
+frontend/node_modules/.cache/default-development/1.pack

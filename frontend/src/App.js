@@ -957,8 +957,8 @@ const ResultsPage = ({ results }) => {
                   <div className="mt-6 p-4 bg-gradient-to-r from-emerald-50 to-yellow-50 rounded-lg">
                     <h4 className="font-semibold text-gray-800 mb-2">⭐ Analyse Détaillée</h4>
                     <p className="text-sm text-gray-700">
-                      Statistiques exceptionnelles ! Avec 5 services gagnants directs et seulement 2 ratés, 
-                      vous maîtrisez parfaitement cette phase. Votre adversaire n'a marqué qu'1 seul service gagnant.
+                      Statistiques exceptionnelles ! Avec 5 aces (services directs) et seulement 2 services ratés, 
+                      vous maîtrisez parfaitement cette phase. De plus, vous gagnez 9 points après vos services contre seulement 4 pour l'adversaire.
                     </p>
                   </div>
                 </CardContent>
