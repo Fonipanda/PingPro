@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-PingPro Backend API Testing Suite - Enhanced TTNet Analysis Testing
-Tests all backend endpoints with focus on TTNet analysis improvements:
-- Enhanced skill assessment functions
-- Personalized recommendations based on real analysis
-- Video quality evaluation with specific feedback
-- Realistic technical insights calculation
+PingPro Backend API Testing Suite - Enhanced TTNet Analysis & Real-Time System Testing
+Tests all backend endpoints with focus on:
+- Enhanced TTNet analysis improvements (skill assessment, personalized recommendations, video quality evaluation)
+- TT3D advanced analysis integration (3D reconstruction, physics-based analysis)
+- Real-time analysis system (TTNetRealTime model, VideoStreamManager, WebSocket endpoints)
+- Streaming server functionality (real-time video analysis, match recording)
+- Integration testing between existing and new real-time components
 """
 
 import requests
