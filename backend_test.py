@@ -660,6 +660,113 @@ class PingProAPITester:
             )
             return False
 
+    def test_tt3d_dependencies(self):
+        """Test TT3D dependencies and imports"""
+        print("\n📦 Testing TT3D Dependencies...")
+        
+        # Test required dependencies for TT3D
+        dependencies = [
+            ('cv2', 'OpenCV for computer vision'),
+            ('numpy', 'NumPy for numerical computations'),
+            ('torch', 'PyTorch for neural networks'),
+            ('sklearn', 'Scikit-learn for machine learning'),
+            ('scipy', 'SciPy for scientific computing')
+        ]
+        
+        all_deps_available = True
+        
+        for dep_name, description in dependencies:
+            try:
+                if dep_name == 'sklearn':
+                    import sklearn
+                else:
+                    __import__(dep_name)
+                
+                self.log_test(
+                    f"TT3D Dependency - {dep_name}", 
+                    True, 
+                    f"{description} available"
+                )
+            except ImportError as e:
+                self.log_test(
+                    f"TT3D Dependency - {dep_name}", 
+                    False, 
+                    f"Missing dependency: {str(e)}"
+                )
+                all_deps_available = False
+        
+        # Test CasADi for physics optimization (optional but mentioned in review)
+        try:
+            import casadi
+            self.log_test(
+                "TT3D Dependency - CasADi", 
+                True, 
+                "CasADi optimization library available"
+            )
+        except ImportError:
+            self.log_test(
+                "TT3D Dependency - CasADi", 
+                False, 
+                "CasADi not available - physics optimization will use fallback methods"
+            )
+        
+        return all_deps_available
+
+    def test_tt3d_server_integration(self):
+        """Test TT3D integration in server.py"""
+        print("\n🔗 Testing TT3D Server Integration...")
+        
+        try:
+            import sys
+            sys.path.append('/app/backend')
+            
+            # Test that server imports TT3D components
+            from server import process_video_analysis_with_tt3d
+            
+            self.log_test(
+                "TT3D Server Function Import", 
+                True, 
+                "process_video_analysis_with_tt3d function available in server"
+            )
+            
+            # Test TT3D-enhanced functions
+            try:
+                from server import (
+                    analyze_frames_with_vision_tt3d_enhanced,
+                    generate_tt3d_coaching_recommendations,
+                    calculate_tt3d_performance_metrics,
+                    compile_videos_with_tt3d
+                )
+                
+                self.log_test(
+                    "TT3D Enhanced Functions", 
+                    True, 
+                    "All TT3D-enhanced analysis functions available"
+                )
+            except ImportError as e:
+                self.log_test(
+                    "TT3D Enhanced Functions", 
+                    False, 
+                    f"Missing TT3D enhanced functions: {str(e)}"
+                )
+            
+            return True
+            
+        except ImportError as e:
+            self.log_test(
+                "TT3D Server Integration", 
+                False, 
+                f"TT3D server integration failed: {str(e)}"
+            )
+            return False
+        except Exception as e:
+            self.log_test(
+                "TT3D Server Integration", 
+                False, 
+                f"TT3D server integration error: {str(e)}"
+            )
+            return False
+
     def test_enhanced_analysis_pipeline(self):
         """Test the enhanced analysis pipeline with TTNet integration"""
         print("\n🔄 Testing Enhanced Analysis Pipeline...")
