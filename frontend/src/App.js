@@ -1469,10 +1469,10 @@ const ResultsPage = ({ results }) => {
                 </div>
                 
                 <div className="mt-6 bg-gradient-to-r from-emerald-50 to-yellow-50 rounded-lg p-4">
-                  <h4 className="font-semibold text-gray-800 mb-2">📊 Analyse des Rallies Spectaculaires</h4>
+                  <h4 className="font-semibold text-gray-800 mb-2">📊 Analyse des Échanges Spectaculaires</h4>
                   <p className="text-sm text-gray-700">
                     Vos meilleurs moments viennent des échanges de moyenne longueur (4-6 coups). Vous dominez particulièrement 
-                    le rally 3 avec 12 coups et 90% d'intensité. Votre capacité à maintenir le niveau dans la durée est remarquable.
+                    l'échange 3 avec 12 coups et 90% d'intensité. Votre capacité à maintenir le niveau dans la durée est remarquable.
                   </p>
                 </div>
               </CardContent>
