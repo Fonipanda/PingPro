@@ -433,10 +433,19 @@ class RealAnalysisValidator:
                 real_method_exists = False
             
             # Test calculate_real_video_statistics function
-            test_video = self.create_test_video(1, 50)
-            try:
-                fake_analysis = {"frame_analyses": []}
-                stats = calculate_real_video_statistics(test_video, fake_analysis, 60.0, 1800)
+            test_videos = self.get_test_videos()
+            if not test_videos:
+                self.log_test(
+                    "Real Analysis Functions - calculate_real_video_statistics",
+                    False,
+                    "No test videos available"
+                )
+                stats_function_works = False
+            else:
+                test_video = test_videos[0]
+                try:
+                    fake_analysis = {"frame_analyses": []}
+                    stats = calculate_real_video_statistics(test_video, fake_analysis, 60.0, 1800)
                 
                 required_stats = ['ball_detection_rate', 'event_summary', 'ball_trajectory_analysis', 'video_characteristics']
                 stats_complete = all(field in stats for field in required_stats)
