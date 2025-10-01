@@ -1293,6 +1293,7 @@ class PingProAPITester:
         self.test_video_compilation_endpoints()
         
         print("\n🛡️ Enhanced Error Handling Tests:")
+        self.test_tt3d_error_handling_robustness()
         self.test_error_handling_improvements()
         
         # Print summary
