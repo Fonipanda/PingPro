@@ -1251,7 +1251,8 @@ async def process_video_analysis_with_tt3d(file_path: str, params: AnalysisReque
         performance_metrics = calculate_enhanced_performance_metrics_lexicon(llm_analysis, ttnet_results, video_processing_results)
         
         # Phase 7: Video Compilation with TT3D Insights
-        analysis_status[analysis_id].update({"stage": "Compiling videos with 3D analysis", "progress": 95})
+        analysis_status[analysis_id].current_step = "Compiling videos with 3D analysis"
+        analysis_status[analysis_id].progress = 95.0
         video_compilations = video_processing_results.get("compilations", {})
         
         # Get video info
