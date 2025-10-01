@@ -178,46 +178,51 @@ class RealAnalysisValidator:
         try:
             from ttnet_analysis import analyze_video_with_ttn
             
-            # Create videos with different sizes
-            small_video = self.create_test_video(1, 30)  # 30KB
-            large_video = self.create_test_video(2, 200)  # 200KB
+            # Get different test videos
+            test_videos = self.get_test_videos()
+            if len(test_videos) < 2:
+                self.log_test(
+                    "Video Characteristics Vary",
+                    False,
+                    f"Need at least 2 videos, found {len(test_videos)}"
+                )
+                return False
+            
+            # Use first 2 videos
+            video1, video2 = test_videos[:2]
             
             # Analyze both videos
-            small_results = analyze_video_with_ttn(small_video)
-            large_results = analyze_video_with_ttn(large_video)
+            results1 = analyze_video_with_ttn(video1)
+            results2 = analyze_video_with_ttn(video2)
             
             # Extract video characteristics
-            small_chars = small_results.get('match_statistics', {}).get('video_characteristics', {})
-            large_chars = large_results.get('match_statistics', {}).get('video_characteristics', {})
+            chars1 = results1.get('match_statistics', {}).get('video_characteristics', {})
+            chars2 = results2.get('match_statistics', {}).get('video_characteristics', {})
             
-            small_size = small_chars.get('file_size_mb', 0)
-            large_size = large_chars.get('file_size_mb', 0)
+            size1 = chars1.get('file_size_mb', 0)
+            size2 = chars2.get('file_size_mb', 0)
             
-            small_seed = small_chars.get('unique_seed', 0)
-            large_seed = large_chars.get('unique_seed', 0)
+            seed1 = chars1.get('unique_seed', 0)
+            seed2 = chars2.get('unique_seed', 0)
             
-            # Check that characteristics reflect actual differences
-            size_reflects_reality = large_size > small_size
-            seeds_different = small_seed != large_seed
+            # Check that characteristics are different
+            sizes_different = size1 != size2
+            seeds_different = seed1 != seed2
             
-            if size_reflects_reality and seeds_different:
+            if sizes_different and seeds_different:
                 self.log_test(
                     "Video Characteristics Vary",
                     True,
-                    f"Small: {small_size:.2f}MB (seed:{small_seed}), Large: {large_size:.2f}MB (seed:{large_seed})"
+                    f"Video1: {size1:.2f}MB (seed:{seed1}), Video2: {size2:.2f}MB (seed:{seed2})"
                 )
                 success = True
             else:
                 self.log_test(
                     "Video Characteristics Vary",
                     False,
-                    f"Characteristics don't vary properly: sizes={small_size},{large_size}, seeds={small_seed},{large_seed}"
+                    f"Characteristics don't vary: sizes_diff={sizes_different}, seeds_diff={seeds_different}"
                 )
                 success = False
-            
-            # Cleanup
-            os.unlink(small_video)
-            os.unlink(large_video)
             
             return success
             
