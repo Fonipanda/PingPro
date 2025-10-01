@@ -561,7 +561,10 @@ const ResultsPage = ({ results }) => {
                   <p className="text-gray-600 mb-4">
                     Vidéo du match sans temps morts • {results.video_info.duration_seconds.toFixed(0)}s compilées
                   </p>
-                  <Button className="bg-emerald-500 hover:bg-emerald-600">
+                  <Button 
+                    className="bg-emerald-500 hover:bg-emerald-600"
+                    onClick={() => handleVideoPlay('match_compilation')}
+                  >
                     <PlayCircle className="w-4 h-4 mr-2" />
                     Lire la vidéo compilée
                   </Button>
