@@ -1380,7 +1380,35 @@ async def get_analysis_status(analysis_id: str):
     
     return analysis_status[analysis_id]
 
-@api_router.get("/analysis/{analysis_id}/results")
+@api_router.get("/analysis/{analysis_id}/video/{video_type}")
+async def get_compilation_video(analysis_id: str, video_type: str):
+    """Get compiled video by type"""
+    if analysis_id not in analysis_status:
+        raise HTTPException(status_code=404, detail="ID d'analyse introuvable")
+    
+    status = analysis_status[analysis_id]
+    
+    if status.status != "completed":
+        raise HTTPException(status_code=400, detail="Analyse non terminée")
+    
+    if analysis_id not in analysis_results:
+        raise HTTPException(status_code=500, detail="Résultats d'analyse introuvables")
+    
+    result = analysis_results[analysis_id]
+    
+    if not result.video_compilations or video_type not in result.video_compilations:
+        raise HTTPException(status_code=404, detail="Vidéo de compilation introuvable")
+    
+    video_path = result.video_compilations[video_type]
+    
+    if not os.path.exists(video_path):
+        raise HTTPException(status_code=404, detail="Fichier vidéo introuvable")
+    
+    return FileResponse(
+        video_path, 
+        media_type="video/mp4", 
+        filename=f"{video_type}_{analysis_id}.mp4"
+    )
 async def get_analysis_results(analysis_id: str):
     """Get analysis results"""
     if analysis_id not in analysis_status:
