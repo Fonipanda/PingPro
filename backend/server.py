@@ -935,69 +935,6 @@ def generate_highlights_from_video_processor(video_processing_results: Dict[str,
         ]
     
     return highlights[:10]  # Limit to 10 highlights
-    """Calculate enhanced performance metrics using TTNet data"""
-    stats = ttnet_results.get("match_statistics", {})
-    technical_insights = ttnet_results.get("technical_insights", {})
-    
-    # Base scores from LLM analysis
-    stroke_analysis = analysis_data.get("stroke_analysis", {})
-    positioning_analysis = analysis_data.get("positioning_analysis", {})
-    
-    # Technical consistency based on ball detection
-    ball_detection_rate = stats.get("ball_detection_rate", 0.5)
-    technical_score = min(100, ball_detection_rate * 120)  # Convert to percentage
-    
-    # Positioning score from analysis
-    positioning_score = 70.0  # Default
-    balance_score = positioning_analysis.get("balance_score", "7")
-    if isinstance(balance_score, str) and balance_score.isdigit():
-        positioning_score = int(balance_score) * 10
-    
-    # Timing accuracy from event detection
-    events = stats.get("event_summary", {})
-    bounces = events.get("ball_bounce", 0)
-    serves = events.get("serve", 0)
-    timing_score = 60.0  # Base score
-    
-    if serves > 0 and bounces > 0:
-        rally_consistency = min(100, (bounces / serves) * 20)  # Rally length factor
-        timing_score = max(timing_score, rally_consistency)
-    
-    # Overall score with TTNet weighting
-    overall = (technical_score * 0.4 + positioning_score * 0.3 + timing_score * 0.3)
-    
-    # Improvement areas based on all analysis
-    improvement_areas = []
-    
-    if technical_score < 60:
-        improvement_areas.append("Technique des coups")
-    if positioning_score < 60:
-        improvement_areas.append("Positionnement tactique")
-    if timing_score < 60:
-        improvement_areas.append("Timing et rythme")
-    if ball_detection_rate < 0.4:
-        improvement_areas.append("Qualité vidéo et setup")
-    
-    # Rally analysis from TTNet
-    rally_analysis = None
-    if bounces > 0 and serves > 0:
-        rally_analysis = {
-            "average_rally_length": bounces / serves,
-            "total_rallies": serves,
-            "total_bounces": bounces,
-            "game_style": technical_insights.get("game_flow_assessment", "Inconnu")
-        }
-    
-    return PerformanceMetrics(
-        technical_consistency=min(100, max(0, technical_score)),
-        positioning_score=min(100, max(0, positioning_score)),
-        timing_accuracy=min(100, max(0, timing_score)),
-        overall_score=min(100, max(0, overall)),
-        improvement_areas=improvement_areas,
-        ball_tracking_quality=technical_insights.get("ball_tracking_quality"),
-        rally_analysis=rally_analysis,
-        event_detection=events
-    )
 
 def extract_movement_analysis(ttnet_results: Dict[str, Any]) -> Dict[str, Any]:
     """Extract movement analysis from TTNet results"""
