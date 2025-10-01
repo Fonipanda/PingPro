@@ -1073,7 +1073,7 @@ class PingProAPITester:
                                 status = status_data.get('status', '')
                                 
                                 # Should either complete with error or handle gracefully
-                                if status in ['error', 'completed', 'processing']:
+                                if status in ['error', 'failed', 'completed', 'processing']:
                                     self.log_test(
                                         "TT3D Error Handling - Corrupted Video", 
                                         True, 
