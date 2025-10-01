@@ -888,7 +888,144 @@ def generate_highlights_from_video_processor(video_processing_results: Dict[str,
     return highlights[:10]  # Limit to 10 highlights
 
 
-def calculate_enhanced_performance_metrics(analysis_data: Dict[str, Any], ttnet_results: Dict[str, Any]) -> PerformanceMetrics:
+def calculate_enhanced_performance_metrics_lexicon(analysis_data: Dict[str, Any], ttnet_results: Dict[str, Any], video_processing_results: Dict[str, Any]) -> PerformanceMetrics:
+    """Calculate enhanced performance metrics using TTNet data and lexicon analysis"""
+    stats = ttnet_results.get("match_statistics", {})
+    technical_insights = ttnet_results.get("technical_insights", {})
+    lexicon_analysis = video_processing_results.get("technical_analysis", {})
+    rally_segments = video_processing_results.get("rally_segments", [])
+    
+    # Enhanced scoring with lexicon insights
+    ball_detection_rate = stats.get("ball_detection_rate", 0.5)
+    technical_score = min(100, ball_detection_rate * 120)
+    
+    # Factor in lexicon analysis quality
+    lexicon_quality_bonus = 0
+    if lexicon_analysis:
+        stroke_variety = lexicon_analysis.get("stroke_statistics", {}).get("stroke_variety", 0)
+        lexicon_quality_bonus = min(20, stroke_variety * 3)  # Max 20 bonus points
+    
+    technical_score = min(100, technical_score + lexicon_quality_bonus)
+    
+    # Enhanced positioning score
+    positioning_score = 70.0
+    positioning_analysis = analysis_data.get("positioning_analysis", {})
+    balance_score = positioning_analysis.get("balance_score", "7")
+    if isinstance(balance_score, str) and balance_score.isdigit():
+        positioning_score = int(balance_score) * 10
+    
+    # Enhanced timing with rally analysis
+    timing_score = 60.0
+    events = stats.get("event_summary", {})
+    bounces = events.get("ball_bounce", 0)
+    serves = events.get("serve", 0)
+    
+    if serves > 0 and bounces > 0:
+        rally_consistency = min(100, (bounces / serves) * 20)
+        timing_score = max(timing_score, rally_consistency)
+    
+    # Add rally quality bonus
+    if len(rally_segments) > 5:
+        timing_score += 10  # Bonus for multiple rallies
+    
+    # Overall score with lexicon weighting
+    overall = (technical_score * 0.4 + positioning_score * 0.3 + timing_score * 0.3)
+    
+    # Improvement areas based on lexicon analysis
+    improvement_areas = []
+    
+    if technical_score < 60:
+        improvement_areas.append("Technique des coups avec lexique")
+    if positioning_score < 60:
+        improvement_areas.append("Positionnement tactique")
+    if timing_score < 60:
+        improvement_areas.append("Timing et rythme")
+    if ball_detection_rate < 0.4:
+        improvement_areas.append("Qualité vidéo et setup")
+    
+    # Enhanced rally analysis with lexicon
+    rally_analysis = None
+    if bounces > 0 and serves > 0:
+        rally_analysis = {
+            "average_rally_length": bounces / serves,
+            "total_rallies": serves,
+            "total_bounces": bounces,
+            "game_style": technical_insights.get("game_flow_assessment", "Inconnu"),
+            "lexicon_terms_count": len(video_processing_results.get("technical_terms_detected", [])),
+            "rally_segments": len(rally_segments)
+        }
+    
+    return PerformanceMetrics(
+        technical_consistency=min(100, max(0, technical_score)),
+        positioning_score=min(100, max(0, positioning_score)),
+        timing_accuracy=min(100, max(0, timing_score)),
+        overall_score=min(100, max(0, overall)),
+        improvement_areas=improvement_areas,
+        ball_tracking_quality=technical_insights.get("ball_tracking_quality"),
+        rally_analysis=rally_analysis,
+        event_detection=events
+    )
+
+def extract_movement_analysis_lexicon(ttnet_results: Dict[str, Any], video_processing_results: Dict[str, Any]) -> Dict[str, Any]:
+    """Extract movement analysis from TTNet results and lexicon processing"""
+    stats = ttnet_results.get("match_statistics", {})
+    trajectory_analysis = stats.get("ball_trajectory_analysis", {})
+    lexicon_analysis = video_processing_results.get("technical_analysis", {})
+    rally_segments = video_processing_results.get("rally_segments", [])
+    
+    movement_analysis = {
+        "ball_speed_analysis": {
+            "average_speed": trajectory_analysis.get("average_speed_pixels_per_frame", 0),
+            "max_speed": trajectory_analysis.get("max_speed_pixels_per_frame", 0),
+            "speed_consistency": trajectory_analysis.get("trajectory_smoothness", 0)
+        },
+        "lexicon_movement_terms": video_processing_results.get("technical_terms_detected", []),
+        "rally_movement_quality": {
+            "total_segments": len(rally_segments),
+            "average_segment_length": np.mean([seg.get('duration', 0) for seg in rally_segments]) if rally_segments else 0,
+            "movement_variety": len(set(video_processing_results.get("technical_terms_detected", [])))
+        },
+        "technical_vocabulary_detected": lexicon_analysis.get("stroke_statistics", {}).get("stroke_distribution", {}),
+        "tracking_confidence": stats.get("ball_detection_rate", 0)
+    }
+    
+    return movement_analysis
+
+def generate_highlights_from_video_processor(video_processing_results: Dict[str, Any], video_duration: float) -> List[float]:
+    """Generate highlight timestamps from video processor rally segments"""
+    highlights = []
+    
+    # Extract rally segments
+    rally_segments = video_processing_results.get("rally_segments", [])
+    
+    # Sort by quality and take best moments
+    if rally_segments:
+        sorted_segments = sorted(rally_segments, key=lambda r: r.get('quality_score', 0), reverse=True)
+        
+        for segment in sorted_segments[:8]:  # Top 8 segments
+            start_time = segment.get('start_time', 0)
+            if start_time <= video_duration:
+                highlights.append(start_time)
+    
+    # If no segments, use compilation data
+    compilations = video_processing_results.get("compilations", {})
+    if not highlights and compilations:
+        # Generate highlights at 20%, 50%, 80% of video
+        highlights = [
+            video_duration * 0.2,
+            video_duration * 0.5,
+            video_duration * 0.8
+        ]
+    
+    # Fallback to default highlights
+    if not highlights and video_duration > 10:
+        highlights = [
+            video_duration * 0.25,
+            video_duration * 0.5,
+            video_duration * 0.75
+        ]
+    
+    return highlights[:10]  # Limit to 10 highlights
     """Calculate enhanced performance metrics using TTNet data"""
     stats = ttnet_results.get("match_statistics", {})
     technical_insights = ttnet_results.get("technical_insights", {})
