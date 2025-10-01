@@ -896,78 +896,7 @@ def generate_highlights_from_video_processor(video_processing_results: Dict[str,
     return highlights[:10]  # Limit to 10 highlights
 
 
-def calculate_enhanced_performance_metrics_lexicon(analysis_data: Dict[str, Any], ttnet_results: Dict[str, Any], video_processing_results: Dict[str, Any]) -> PerformanceMetrics:
-    """Calculate realistic performance metrics based on actual video analysis"""
-    stats = ttnet_results.get("match_statistics", {})
-    technical_insights = ttnet_results.get("technical_insights", {})
-    skill_assessment = technical_insights.get("skill_assessment", {})
-    match_characteristics = technical_insights.get("match_characteristics", {})
-    
-    # Use real skill assessment from TTNet analysis
-    technical_score = skill_assessment.get("technical_consistency", 70.0)
-    tactical_score = skill_assessment.get("tactical_awareness", 65.0)
-    shot_variety_score = skill_assessment.get("shot_variety", 60.0)
-    
-    # Positioning score based on tactical awareness and real analysis
-    positioning_score = tactical_score
-    
-    # Timing score based on technical consistency and ball detection quality
-    ball_detection_rate = stats.get("ball_detection_rate", 0.5)
-    timing_score = (technical_score * 0.6) + (ball_detection_rate * 40)  # Convert to 0-100 scale
-    
-    # Overall score weighted by different factors
-    overall = (technical_score * 0.35 + positioning_score * 0.25 + timing_score * 0.25 + shot_variety_score * 0.15)
-    
-    # Real improvement areas based on actual analysis
-    improvement_areas = []
-    evidence_points = skill_assessment.get("evidence_points", [])
-    
-    if technical_score < 65:
-        improvement_areas.append("Régularité technique")
-    if tactical_score < 60:
-        improvement_areas.append("Conscience tactique")
-    if shot_variety_score < 55:
-        improvement_areas.append("Variété des coups")
-    if ball_detection_rate < 0.6:
-        improvement_areas.append("Qualité vidéo pour analyse")
-    
-    # Add specific areas from evidence points
-    for point in evidence_points:
-        if "filet" in point.lower():
-            if "Fautes au filet" not in improvement_areas:
-                improvement_areas.append("Fautes au filet")
-        elif "timing" in point.lower():
-            if "Timing d'exécution" not in improvement_areas:
-                improvement_areas.append("Timing d'exécution")
-    
-    # Real rally analysis from match characteristics
-    events = stats.get("event_summary", {})
-    rally_analysis = None
-    
-    avg_rally_length = match_characteristics.get("average_rally_length", 0)
-    if avg_rally_length > 0:
-        rally_analysis = {
-            "average_rally_length": avg_rally_length,
-            "total_rallies": match_characteristics.get("total_serves_detected", 0),
-            "total_bounces": match_characteristics.get("total_bounces_detected", 0),
-            "game_style": technical_insights.get("game_flow_assessment", "Équilibré"),
-            "game_intensity": match_characteristics.get("game_intensity", 0.5),
-            "estimated_level": skill_assessment.get("estimated_level", "intermediate")
-        }
-    
-    # Ball tracking quality from real analysis
-    ball_tracking_quality = technical_insights.get("ball_tracking_quality", "Unknown")
-    
-    return PerformanceMetrics(
-        technical_consistency=min(100, max(0, technical_score)),
-        positioning_score=min(100, max(0, positioning_score)),
-        timing_accuracy=min(100, max(0, timing_score)),
-        overall_score=min(100, max(0, overall)),
-        improvement_areas=improvement_areas[:4],  # Limit to top 4
-        ball_tracking_quality=ball_tracking_quality,
-        rally_analysis=rally_analysis,
-        event_detection=events
-    )
+# Duplicate function removed - using the first definition above
 
 def extract_movement_analysis_lexicon(ttnet_results: Dict[str, Any], video_processing_results: Dict[str, Any]) -> Dict[str, Any]:
     """Extract movement analysis from TTNet results and lexicon processing"""
