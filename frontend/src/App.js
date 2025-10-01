@@ -8,6 +8,28 @@ import { Progress } from './components/ui/progress';
 import { Alert, AlertDescription } from './components/ui/alert';
 import { Separator } from './components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  RadarChart,
+  Radar,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  Cell,
+  Area,
+  AreaChart
+} from 'recharts';
 import { 
   Upload, 
   PlayCircle, 
