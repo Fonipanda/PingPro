@@ -602,41 +602,71 @@ const ResultsPage = ({ results }) => {
                   <CardTitle>Services vs Adversaire</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="bg-emerald-50 rounded-lg p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="font-semibold">Points service remportés (Vous)</span>
-                        <span className="text-2xl font-bold text-emerald-600">
-                          {results.performance_metrics.event_detection?.serve ? 
-                            Math.floor(results.performance_metrics.event_detection.serve * 0.6) : '7'}
-                        </span>
-                      </div>
-                      <div className="w-full bg-emerald-200 rounded-full h-2 mb-2">
-                        <div className="bg-emerald-500 h-2 rounded-full" style={{width: '60%'}}></div>
-                      </div>
-                      <span className="text-xs text-emerald-700">60% de réussite</span>
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="h-48">
+                      <h4 className="text-sm font-semibold text-center mb-2">Vos Services</h4>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={[
+                              { name: 'Réussis', value: 60, fill: '#10b981' },
+                              { name: 'Ratés', value: 40, fill: '#ef4444' },
+                            ]}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={30}
+                            outerRadius={60}
+                            dataKey="value"
+                            label={({ name, value }) => `${name}: ${value}%`}
+                          >
+                          </Pie>
+                          <Tooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
                     </div>
                     
-                    <div className="bg-red-50 rounded-lg p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="font-semibold">Points service adversaire</span>
-                        <span className="text-2xl font-bold text-red-600">5</span>
-                      </div>
-                      <div className="w-full bg-red-200 rounded-full h-2 mb-2">
-                        <div className="bg-red-500 h-2 rounded-full" style={{width: '40%'}}></div>
-                      </div>
-                      <span className="text-xs text-red-700">40% de réussite</span>
+                    <div className="h-48">
+                      <h4 className="text-sm font-semibold text-center mb-2">Services Adversaire</h4>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={[
+                              { name: 'Réussis', value: 40, fill: '#10b981' },
+                              { name: 'Ratés', value: 60, fill: '#ef4444' },
+                            ]}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={30}
+                            outerRadius={60}
+                            dataKey="value"
+                            label={({ name, value }) => `${name}: ${value}%`}
+                          >
+                          </Pie>
+                          <Tooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
                     </div>
+                  </div>
 
-                    <div className="bg-orange-50 rounded-lg p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="font-semibold">Fautes en remise (Vous)</span>
-                        <span className="text-2xl font-bold text-orange-600">3</span>
+                  <div className="grid grid-cols-3 gap-3 mb-4">
+                    <div className="bg-emerald-50 rounded-lg p-3 text-center">
+                      <div className="text-2xl font-bold text-emerald-600">
+                        {results.performance_metrics.event_detection?.serve ? 
+                          Math.floor(results.performance_metrics.event_detection.serve * 0.6) : '7'}
                       </div>
+                      <div className="text-xs text-emerald-700">Services gagnés</div>
+                    </div>
+                    <div className="bg-red-50 rounded-lg p-3 text-center">
+                      <div className="text-2xl font-bold text-red-600">5</div>
+                      <div className="text-xs text-red-700">Services perdus</div>
+                    </div>
+                    <div className="bg-orange-50 rounded-lg p-3 text-center">
+                      <div className="text-2xl font-bold text-orange-600">3</div>
+                      <div className="text-xs text-orange-700">Fautes remise</div>
                     </div>
                   </div>
                   
-                  <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                  <div className="p-4 bg-gray-50 rounded-lg">
                     <h4 className="font-semibold text-gray-800 mb-2">🏓 Analyse des Services</h4>
                     <p className="text-sm text-gray-600">
                       Excellent contrôle au service ! Vous dominez clairement dans cette phase avec 60% de points gagnés. 
