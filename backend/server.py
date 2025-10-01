@@ -3,7 +3,7 @@ from video_processor import VideoProcessor, TableTennisLexicon
 from tt3d_advanced_analysis import TT3DAdvancedAnalyzer, AdvancedAnalysisResult
 from real_time_ttnet_analyzer import RealTimeAnalyzer, BallDetection, PlayerDetection, EventDetection
 from streaming_server import stream_manager, websocket_endpoint, get_video_stream, match_recorder
-from fastapi import FastAPI, APIRouter, File, UploadFile, HTTPException, BackgroundTasks, Form
+from fastapi import FastAPI, APIRouter, File, UploadFile, HTTPException, BackgroundTasks, Form, WebSocket
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
