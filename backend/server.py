@@ -444,6 +444,196 @@ def create_enhanced_fallback_analysis(ttnet_results: Dict[str, Any], params: Ana
         ]
     }
 
+async def analyze_frames_with_vision_tt3d_enhanced(frames_data: List[str], params: AnalysisRequest, tt3d_results: AdvancedAnalysisResult, ttnet_results: Dict[str, Any], video_processing_results: Dict[str, Any]) -> Dict[str, Any]:
+    """Enhanced LLM analysis with TT3D physics-based insights"""
+    # For now, enhance the existing analysis with TT3D data
+    base_analysis = await analyze_frames_with_vision_enhanced_lexicon(frames_data, params, ttnet_results, video_processing_results)
+    
+    # Add TT3D-specific insights to the analysis
+    tt3d_enhanced_analysis = base_analysis.copy()
+    
+    # Add 3D physics context
+    tt3d_enhanced_analysis["physics_context"] = {
+        "ball_trajectory_3d": {
+            "physics_consistency": tt3d_results.ball_trajectory.physics_consistency,
+            "bounce_count": len(tt3d_results.ball_trajectory.bounce_points),
+            "max_speed": tt3d_results.physics_metrics.get("max_speed", 0),
+            "spin_analysis": {
+                "max_spin": tt3d_results.physics_metrics.get("max_spin", 0),
+                "avg_spin": tt3d_results.physics_metrics.get("avg_spin", 0)
+            }
+        },
+        "camera_quality": tt3d_results.quality_assessment,
+        "tactical_insights": tt3d_results.tactical_insights
+    }
+    
+    return tt3d_enhanced_analysis
+
+async def generate_tt3d_coaching_recommendations(analysis_data: Dict[str, Any], params: AnalysisRequest, tt3d_results: AdvancedAnalysisResult, ttnet_results: Dict[str, Any]) -> List[str]:
+    """Generate coaching recommendations enhanced with TT3D physics insights"""
+    
+    # Start with base recommendations
+    base_recommendations = await generate_enhanced_coaching_recommendations(analysis_data, params, ttnet_results)
+    
+    # Add TT3D-specific recommendations
+    tt3d_recommendations = []
+    
+    # Physics-based recommendations
+    physics_metrics = tt3d_results.physics_metrics
+    max_speed = physics_metrics.get("max_speed", 0)
+    avg_speed = physics_metrics.get("avg_speed", 0)
+    max_spin = physics_metrics.get("max_spin", 0)
+    physics_consistency = tt3d_results.ball_trajectory.physics_consistency
+    
+    # Speed analysis recommendations
+    if max_speed > 25:
+        tt3d_recommendations.append("🚀 Vitesse maximale excellente ({:.1f} m/s) - exploiter cet atout offensif".format(max_speed))
+    elif max_speed < 10:
+        tt3d_recommendations.append("⚡ Développer la vitesse d'exécution - vitesse max détectée: {:.1f} m/s".format(max_speed))
+    
+    # Spin analysis recommendations  
+    if max_spin > 100:
+        tt3d_recommendations.append("🌪️ Excellent contrôle des effets - continuer à varier les rotations")
+    elif max_spin < 20:
+        tt3d_recommendations.append("🔄 Travailler les effets - spin max détecté: {:.1f} rad/s".format(max_spin))
+    
+    # Physics consistency recommendations
+    if physics_consistency < 0.6:
+        tt3d_recommendations.append("📐 Améliorer la régularité physique des trajectoires")
+    elif physics_consistency > 0.8:
+        tt3d_recommendations.append("✅ Excellente cohérence physique - trajectoires très régulières")
+    
+    # Camera quality recommendations
+    camera_quality = tt3d_results.quality_assessment.get("camera_calibration_quality", "good")
+    if camera_quality == "poor":
+        tt3d_recommendations.append("📹 Améliorer la configuration caméra pour des analyses futures plus précises")
+    
+    # Tactical insights from 3D analysis
+    tactical_insights = tt3d_results.tactical_insights
+    game_style = tactical_insights.get("game_style", "balanced")
+    
+    if game_style == "aggressive":
+        tt3d_recommendations.append("⚔️ Style offensif détecté - équilibrer avec plus de patience tactique")
+    elif game_style == "defensive":
+        tt3d_recommendations.append("🛡️ Style défensif - développer des opportunités d'attaque")
+    
+    # Bounce analysis recommendations
+    bounce_count = len(tt3d_results.ball_trajectory.bounce_points)
+    trajectory_length = len(tt3d_results.ball_trajectory.positions_3d)
+    
+    if bounce_count > 0 and trajectory_length > 0:
+        bounce_ratio = bounce_count / trajectory_length
+        if bounce_ratio > 0.3:
+            tt3d_recommendations.append("🏓 Nombreux rebonds détectés - excellent pour la construction de points")
+        elif bounce_ratio < 0.1:
+            tt3d_recommendations.append("🎯 Peu de rebonds détectés - travailler les échanges plus longs")
+    
+    # Quality-based recommendations from TT3D
+    quality_recs = tt3d_results.quality_assessment.get("recommendations", [])
+    for rec in quality_recs[:2]:  # Top 2 TT3D recommendations
+        tt3d_recommendations.append(f"🤖 Analyse 3D: {rec}")
+    
+    # Combine and limit recommendations
+    all_recommendations = base_recommendations + tt3d_recommendations
+    
+    # Remove duplicates while preserving order
+    unique_recommendations = []
+    seen = set()
+    for rec in all_recommendations:
+        if rec not in seen:
+            unique_recommendations.append(rec)
+            seen.add(rec)
+    
+    return unique_recommendations[:10]  # Limit to 10 most relevant
+
+def calculate_tt3d_performance_metrics(analysis_data: Dict[str, Any], tt3d_results: AdvancedAnalysisResult, ttnet_results: Dict[str, Any], video_processing_results: Dict[str, Any]) -> PerformanceMetrics:
+    """Calculate performance metrics enhanced with TT3D 3D analysis"""
+    
+    # Base metrics from TTNet
+    base_metrics = calculate_enhanced_performance_metrics_lexicon(analysis_data, ttnet_results, video_processing_results)
+    
+    # Enhance with TT3D physics data
+    physics_metrics = tt3d_results.physics_metrics
+    
+    # Technical consistency enhanced with physics validation
+    physics_consistency = tt3d_results.ball_trajectory.physics_consistency
+    enhanced_technical = (base_metrics.technical_consistency * 0.7) + (physics_consistency * 30)
+    
+    # Positioning enhanced with 3D trajectory analysis
+    avg_height = physics_metrics.get("avg_height", 0.5)
+    height_consistency = 1.0 - min(0.5, abs(avg_height - 0.5) / 0.5)  # Optimal height around 0.5m
+    enhanced_positioning = (base_metrics.positioning_score * 0.8) + (height_consistency * 20)
+    
+    # Timing enhanced with speed consistency
+    max_speed = physics_metrics.get("max_speed", 0)
+    avg_speed = physics_metrics.get("avg_speed", 0)
+    speed_ratio = avg_speed / max_speed if max_speed > 0 else 0.5
+    enhanced_timing = (base_metrics.timing_accuracy * 0.7) + (speed_ratio * 30)
+    
+    # Overall enhanced with 3D consistency
+    enhanced_overall = (enhanced_technical * 0.35 + enhanced_positioning * 0.25 + enhanced_timing * 0.25 + physics_consistency * 15)
+    
+    # Enhanced improvement areas with 3D insights
+    enhanced_improvement_areas = base_metrics.improvement_areas.copy()
+    
+    if physics_consistency < 0.6:
+        enhanced_improvement_areas.append("Cohérence physique des trajectoires")
+    
+    if avg_speed < 8:
+        enhanced_improvement_areas.append("Vitesse d'exécution")
+    
+    spin_avg = physics_metrics.get("avg_spin", 0)
+    if spin_avg < 20:
+        enhanced_improvement_areas.append("Utilisation des effets")
+    
+    # Enhanced rally analysis with 3D data
+    enhanced_rally_analysis = base_metrics.rally_analysis.copy() if base_metrics.rally_analysis else {}
+    if enhanced_rally_analysis:
+        enhanced_rally_analysis.update({
+            "physics_consistency": physics_consistency,
+            "avg_ball_speed_3d": avg_speed,
+            "max_ball_speed_3d": max_speed,
+            "spin_utilization": spin_avg,
+            "bounce_accuracy": len(tt3d_results.ball_trajectory.bounce_points) / max(1, len(tt3d_results.ball_trajectory.positions_3d))
+        })
+    
+    return PerformanceMetrics(
+        technical_consistency=min(100, max(0, enhanced_technical)),
+        positioning_score=min(100, max(0, enhanced_positioning)),
+        timing_accuracy=min(100, max(0, enhanced_timing)),
+        overall_score=min(100, max(0, enhanced_overall)),
+        improvement_areas=enhanced_improvement_areas[:4],  # Limit to top 4
+        ball_tracking_quality=tt3d_results.quality_assessment.get("ball_tracking_quality", "good"),
+        rally_analysis=enhanced_rally_analysis,
+        event_detection=ttnet_results.get("match_statistics", {}).get("event_summary", {})
+    )
+
+def compile_videos_with_tt3d(video_processing_results: Dict[str, Any], tt3d_results: AdvancedAnalysisResult, analysis_id: str) -> Optional[Dict[str, Optional[str]]]:
+    """Enhanced video compilation using TT3D event timeline"""
+    
+    # Start with base compilation
+    base_compilations = compile_videos(video_processing_results, analysis_id)
+    
+    # Enhance with TT3D event data
+    event_timeline = tt3d_results.event_timeline
+    
+    # Extract bounce and serve events for better compilation
+    bounce_events = [e for e in event_timeline if e['type'] == 'bounce']
+    serve_events = [e for e in event_timeline if e['type'] == 'serve']
+    
+    enhanced_compilations = base_compilations.copy() if base_compilations else {}
+    
+    # Add TT3D-enhanced metadata
+    if enhanced_compilations:
+        enhanced_compilations["tt3d_metadata"] = {
+            "bounce_count": len(bounce_events),
+            "serve_count": len(serve_events),
+            "physics_quality": tt3d_results.ball_trajectory.physics_consistency,
+            "analysis_confidence": np.mean(tt3d_results.ball_trajectory.confidence_scores) if tt3d_results.ball_trajectory.confidence_scores else 0.0
+        }
+    
+    return enhanced_compilations
+
 async def generate_enhanced_coaching_recommendations(analysis_data: Dict[str, Any], params: AnalysisRequest, ttnet_results: Dict[str, Any]) -> List[str]:
     """Generate enhanced coaching recommendations using real TTNet analysis and LLM insights"""
     
