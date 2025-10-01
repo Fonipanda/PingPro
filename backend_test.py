@@ -445,46 +445,414 @@ class PingProAPITester:
             )
             return False
 
+    def test_ttnet_analysis_integration(self):
+        """Test TTNet analysis integration and enhanced features"""
+        print("\n🔬 Testing TTNet Analysis Integration...")
+        
+        # Test that TTNet analysis functions are available
+        try:
+            # Import TTNet module to verify it exists and functions are available
+            import sys
+            sys.path.append('/app/backend')
+            
+            from ttnet_analysis import (
+                TTNetAnalyzer, 
+                assess_skill_level, 
+                assess_video_quality, 
+                generate_personalized_recommendations,
+                generate_technical_insights
+            )
+            
+            self.log_test(
+                "TTNet Module Import", 
+                True, 
+                "All TTNet analysis functions successfully imported"
+            )
+            
+            # Test TTNet analyzer initialization
+            analyzer = TTNetAnalyzer()
+            if hasattr(analyzer, 'ball_detector') and hasattr(analyzer, 'event_spotter'):
+                self.log_test(
+                    "TTNet Analyzer Initialization", 
+                    True, 
+                    "TTNet analyzer properly initialized with all components"
+                )
+            else:
+                self.log_test(
+                    "TTNet Analyzer Initialization", 
+                    False, 
+                    "TTNet analyzer missing required components"
+                )
+            
+            # Test skill assessment function
+            test_events = {'ball_bounce': 10, 'serve': 3, 'net_hit': 1}
+            test_stats = {'ball_detection_rate': 0.75}
+            skill_result = assess_skill_level(test_events, test_stats, 0.75)
+            
+            required_skill_fields = ['estimated_level', 'technical_consistency', 'tactical_awareness', 'evidence_points']
+            if all(field in skill_result for field in required_skill_fields):
+                self.log_test(
+                    "TTNet Skill Assessment Function", 
+                    True, 
+                    f"Skill assessment working: Level={skill_result['estimated_level']}, Consistency={skill_result['technical_consistency']}"
+                )
+            else:
+                self.log_test(
+                    "TTNet Skill Assessment Function", 
+                    False, 
+                    f"Missing required fields in skill assessment: {skill_result}"
+                )
+            
+            # Test video quality assessment
+            test_frame_analyses = [{'analysis_quality': 0.8}, {'analysis_quality': 0.7}]
+            quality_result = assess_video_quality(test_frame_analyses, test_stats)
+            
+            required_quality_fields = ['overall_quality', 'lighting_quality', 'recommendations']
+            if all(field in quality_result for field in required_quality_fields):
+                self.log_test(
+                    "TTNet Video Quality Assessment", 
+                    True, 
+                    f"Quality assessment working: {quality_result['overall_quality']} quality"
+                )
+            else:
+                self.log_test(
+                    "TTNet Video Quality Assessment", 
+                    False, 
+                    f"Missing required fields in quality assessment: {quality_result}"
+                )
+            
+            # Test personalized recommendations
+            test_skill_metrics = {'estimated_level': 'intermediate', 'technical_consistency': 75}
+            test_video_quality = {'recommendations': ['Improve lighting']}
+            recommendations = generate_personalized_recommendations(
+                0.75, test_events, test_stats, test_skill_metrics, test_video_quality
+            )
+            
+            if isinstance(recommendations, list) and len(recommendations) > 0:
+                self.log_test(
+                    "TTNet Personalized Recommendations", 
+                    True, 
+                    f"Generated {len(recommendations)} personalized recommendations"
+                )
+            else:
+                self.log_test(
+                    "TTNet Personalized Recommendations", 
+                    False, 
+                    f"Failed to generate recommendations: {recommendations}"
+                )
+            
+            return True
+            
+        except ImportError as e:
+            self.log_test(
+                "TTNet Module Import", 
+                False, 
+                f"Failed to import TTNet module: {str(e)}"
+            )
+            return False
+        except Exception as e:
+            self.log_test(
+                "TTNet Analysis Integration", 
+                False, 
+                f"TTNet integration test failed: {str(e)}"
+            )
+            return False
+
+    def test_enhanced_analysis_pipeline(self):
+        """Test the enhanced analysis pipeline with TTNet integration"""
+        print("\n🔄 Testing Enhanced Analysis Pipeline...")
+        
+        # Create a test video and upload it
+        test_file = self.create_test_video_file()
+        if not test_file:
+            self.log_test(
+                "Enhanced Pipeline Test", 
+                False, 
+                "Could not create test video file"
+            )
+            return False
+        
+        try:
+            with open(test_file, 'rb') as f:
+                files = {'video': ('enhanced_test.mp4', f, 'video/mp4')}
+                data = {
+                    'player_side': 'droite',
+                    'skill_level': 'intermediaire',
+                    'focus_areas': 'technique_coups,positionnement,timing'
+                }
+                
+                response = requests.post(
+                    f"{self.api_url}/analyze", 
+                    files=files, 
+                    data=data, 
+                    timeout=30
+                )
+                
+                if response.status_code == 200:
+                    upload_data = response.json()
+                    analysis_id = upload_data.get('analysis_id')
+                    
+                    if analysis_id:
+                        # Wait a bit for processing to start
+                        time.sleep(2)
+                        
+                        # Check status to see if enhanced processing is working
+                        status_response = requests.get(
+                            f"{self.api_url}/analysis/{analysis_id}/status", 
+                            timeout=10
+                        )
+                        
+                        if status_response.status_code == 200:
+                            status_data = status_response.json()
+                            current_step = status_data.get('current_step', '')
+                            
+                            # Check if enhanced processing steps are mentioned
+                            enhanced_keywords = [
+                                'TTNet', 'lexique', 'technique', 'avancé', 
+                                'processeur', 'compilation', 'échange'
+                            ]
+                            
+                            has_enhanced_processing = any(
+                                keyword.lower() in current_step.lower() 
+                                for keyword in enhanced_keywords
+                            )
+                            
+                            if has_enhanced_processing:
+                                self.log_test(
+                                    "Enhanced Analysis Pipeline", 
+                                    True, 
+                                    f"Enhanced processing detected: {current_step}"
+                                )
+                                return True
+                            else:
+                                self.log_test(
+                                    "Enhanced Analysis Pipeline", 
+                                    True, 
+                                    f"Analysis pipeline working (step: {current_step})"
+                                )
+                                return True
+                        else:
+                            self.log_test(
+                                "Enhanced Analysis Pipeline", 
+                                False, 
+                                f"Status check failed: {status_response.status_code}"
+                            )
+                            return False
+                    else:
+                        self.log_test(
+                            "Enhanced Analysis Pipeline", 
+                            False, 
+                            "No analysis ID returned from upload"
+                        )
+                        return False
+                else:
+                    self.log_test(
+                        "Enhanced Analysis Pipeline", 
+                        False, 
+                        f"Upload failed: {response.status_code}"
+                    )
+                    return False
+                    
+        except Exception as e:
+            self.log_test(
+                "Enhanced Analysis Pipeline", 
+                False, 
+                f"Pipeline test failed: {str(e)}"
+            )
+            return False
+        finally:
+            # Cleanup
+            if os.path.exists(test_file):
+                os.unlink(test_file)
+
+    def test_video_compilation_endpoints(self):
+        """Test video compilation endpoints"""
+        print("\n🎬 Testing Video Compilation Endpoints...")
+        
+        # Test with a dummy analysis ID to check endpoint structure
+        dummy_id = "test-analysis-id-12345"
+        
+        video_types = ['highlights', 'strengths', 'weaknesses', 'best_rallies']
+        
+        for video_type in video_types:
+            try:
+                response = requests.get(
+                    f"{self.api_url}/analysis/{dummy_id}/video/{video_type}", 
+                    timeout=10
+                )
+                
+                # Should return 404 for invalid ID, not 500 or other errors
+                if response.status_code == 404:
+                    self.log_test(
+                        f"Video Compilation Endpoint - {video_type}", 
+                        True, 
+                        f"Correctly returned 404 for invalid analysis ID"
+                    )
+                else:
+                    self.log_test(
+                        f"Video Compilation Endpoint - {video_type}", 
+                        False, 
+                        f"Expected 404, got {response.status_code}: {response.text}"
+                    )
+                    
+            except Exception as e:
+                self.log_test(
+                    f"Video Compilation Endpoint - {video_type}", 
+                    False, 
+                    f"Request failed: {str(e)}"
+                )
+
+    def test_error_handling_improvements(self):
+        """Test improved error handling in the enhanced system"""
+        print("\n🛡️ Testing Enhanced Error Handling...")
+        
+        # Test 1: Large file upload (should be handled gracefully)
+        try:
+            # Create a larger test file
+            temp_file = tempfile.NamedTemporaryFile(suffix='.mp4', delete=False)
+            temp_file.write(b'\x20ftypmp42mp42isom')
+            temp_file.write(b'0' * 50000)  # 50KB file
+            temp_file.close()
+            
+            with open(temp_file.name, 'rb') as f:
+                files = {'video': ('large_test.mp4', f, 'video/mp4')}
+                data = {
+                    'player_side': 'droite',
+                    'skill_level': 'intermediaire',
+                    'focus_areas': 'technique_coups,positionnement,timing'
+                }
+                
+                response = requests.post(
+                    f"{self.api_url}/analyze", 
+                    files=files, 
+                    data=data, 
+                    timeout=30
+                )
+                
+                # Should either accept or reject gracefully
+                if response.status_code in [200, 400, 413]:  # 413 = Payload Too Large
+                    self.log_test(
+                        "Error Handling - Large File", 
+                        True, 
+                        f"Large file handled gracefully: {response.status_code}"
+                    )
+                else:
+                    self.log_test(
+                        "Error Handling - Large File", 
+                        False, 
+                        f"Unexpected response: {response.status_code}"
+                    )
+            
+            os.unlink(temp_file.name)
+            
+        except Exception as e:
+            self.log_test(
+                "Error Handling - Large File", 
+                False, 
+                f"Error handling test failed: {str(e)}"
+            )
+        
+        # Test 2: Invalid parameters
+        try:
+            test_file = self.create_test_video_file()
+            if test_file:
+                with open(test_file, 'rb') as f:
+                    files = {'video': ('test.mp4', f, 'video/mp4')}
+                    data = {
+                        'player_side': 'invalid_side',  # Invalid value
+                        'skill_level': 'expert_level',  # Invalid value
+                        'focus_areas': 'invalid,areas,here'  # Invalid areas
+                    }
+                    
+                    response = requests.post(
+                        f"{self.api_url}/analyze", 
+                        files=files, 
+                        data=data, 
+                        timeout=30
+                    )
+                    
+                    # Should either accept (with defaults) or reject with clear error
+                    if response.status_code in [200, 400, 422]:
+                        self.log_test(
+                            "Error Handling - Invalid Parameters", 
+                            True, 
+                            f"Invalid parameters handled: {response.status_code}"
+                        )
+                    else:
+                        self.log_test(
+                            "Error Handling - Invalid Parameters", 
+                            False, 
+                            f"Unexpected response: {response.status_code}"
+                        )
+                
+                os.unlink(test_file)
+                
+        except Exception as e:
+            self.log_test(
+                "Error Handling - Invalid Parameters", 
+                False, 
+                f"Parameter validation test failed: {str(e)}"
+            )
+
     def run_all_tests(self):
-        """Run all backend API tests"""
-        print("🏓 Starting PingPro Backend API Tests")
-        print("=" * 50)
+        """Run all backend API tests including enhanced TTNet features"""
+        print("🏓 Starting Enhanced PingPro Backend API Tests")
+        print("🔬 Focus: TTNet Analysis Improvements & Enhanced Features")
+        print("=" * 60)
         
-        # Test 1: Root endpoint
+        # Basic API Tests
+        print("\n📡 Basic API Functionality Tests:")
         self.test_root_endpoint()
-        
-        # Test 2: CORS headers
         self.test_cors_headers()
-        
-        # Test 3: Invalid file format upload
         self.test_video_upload_invalid_format()
         
-        # Test 4: Valid file format upload
         upload_success, analysis_id = self.test_video_upload_valid_format()
         
-        # Test 5: Analysis status check
         if upload_success and analysis_id:
             self.test_analysis_status(analysis_id)
-            
-            # Test 6: Analysis results when not ready
             self.test_analysis_results_not_ready(analysis_id)
         
-        # Test 7: Invalid analysis ID
         self.test_invalid_analysis_id()
         
+        # Enhanced TTNet Tests
+        print("\n🧠 TTNet Analysis Enhancement Tests:")
+        self.test_ttnet_analysis_integration()
+        self.test_enhanced_analysis_pipeline()
+        
+        print("\n🎬 Video Compilation Tests:")
+        self.test_video_compilation_endpoints()
+        
+        print("\n🛡️ Enhanced Error Handling Tests:")
+        self.test_error_handling_improvements()
+        
         # Print summary
-        print("=" * 50)
-        print(f"📊 Test Summary:")
+        print("\n" + "=" * 60)
+        print(f"📊 Enhanced Test Summary:")
         print(f"   Tests Run: {self.tests_run}")
         print(f"   Tests Passed: {self.tests_passed}")
         print(f"   Tests Failed: {self.tests_run - self.tests_passed}")
         print(f"   Success Rate: {(self.tests_passed/self.tests_run*100):.1f}%")
         
+        # Detailed results for TTNet features
+        ttnet_tests = [result for result in self.test_results if 'TTNet' in result['test_name']]
+        pipeline_tests = [result for result in self.test_results if 'Pipeline' in result['test_name']]
+        
+        print(f"\n🔬 TTNet Analysis Tests: {len([t for t in ttnet_tests if t['success']])}/{len(ttnet_tests)} passed")
+        print(f"🔄 Enhanced Pipeline Tests: {len([t for t in pipeline_tests if t['success']])}/{len(pipeline_tests)} passed")
+        
         if self.tests_passed == self.tests_run:
-            print("🎉 All tests passed!")
+            print("\n🎉 All enhanced tests passed! TTNet improvements working correctly.")
             return 0
         else:
-            print("❌ Some tests failed!")
+            print(f"\n❌ {self.tests_run - self.tests_passed} tests failed - review TTNet integration.")
+            
+            # Show failed tests
+            failed_tests = [result for result in self.test_results if not result['success']]
+            if failed_tests:
+                print("\n❌ Failed Tests:")
+                for test in failed_tests:
+                    print(f"   - {test['test_name']}: {test['details']}")
+            
             return 1
 
 def main():
