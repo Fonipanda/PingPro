@@ -748,64 +748,285 @@ def analyze_video_with_ttnet(video_path: str, target_fps: int = 30) -> Dict[str,
 
 def generate_technical_insights(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Generate technical insights from TTNet analysis results
+    Generate realistic technical insights based on actual video analysis
     """
     insights = {
         'ball_tracking_quality': 'Unknown',
         'player_movement_analysis': 'Unknown',
         'game_flow_assessment': 'Unknown',
-        'technical_recommendations': []
+        'technical_recommendations': [],
+        'match_characteristics': {},
+        'skill_assessment': {},
+        'video_quality_metrics': {}
     }
     
     try:
         stats = analysis_results.get('match_statistics', {})
+        frame_analyses = analysis_results.get('frame_analyses', [])
         
-        # Ball tracking quality assessment
+        # Analyze actual detection performance
         ball_detection_rate = stats.get('ball_detection_rate', 0)
+        total_frames = stats.get('total_frames_analyzed', 1)
         
-        if ball_detection_rate > 0.8:
+        # Ball tracking quality assessment with more nuanced evaluation
+        if ball_detection_rate > 0.85:
             insights['ball_tracking_quality'] = 'Excellent'
-        elif ball_detection_rate > 0.6:
+            tracking_desc = "Détection de balle optimale permettant une analyse précise"
+        elif ball_detection_rate > 0.65:
             insights['ball_tracking_quality'] = 'Good'
-        elif ball_detection_rate > 0.4:
+            tracking_desc = "Bonne détection de balle avec quelques interruptions mineures"
+        elif ball_detection_rate > 0.45:
             insights['ball_tracking_quality'] = 'Fair'
+            tracking_desc = "Détection correcte mais avec des pertes lors des mouvements rapides"
         else:
             insights['ball_tracking_quality'] = 'Poor'
+            tracking_desc = "Détection difficile - amélioration technique nécessaire"
         
-        # Game flow assessment
+        # Analyze actual events detected
         events = stats.get('event_summary', {})
         bounce_count = events.get('ball_bounce', 0)
         serve_count = events.get('serve', 0)
+        net_hits = events.get('net_hit', 0)
+        rally_ends = events.get('rally_end', 0)
         
+        # Real game flow assessment based on detected events
         if bounce_count > 0 and serve_count > 0:
             rally_avg = bounce_count / serve_count
-            if rally_avg > 5:
-                insights['game_flow_assessment'] = 'Long rallies - Defensive play'
+            rally_consistency = calculate_rally_consistency(frame_analyses)
+            
+            if rally_avg > 6:
+                flow_assessment = 'Jeu défensif avec longs échanges'
+                game_style = 'defensive'
             elif rally_avg > 3:
-                insights['game_flow_assessment'] = 'Balanced rallies'
+                flow_assessment = 'Jeu équilibré avec échanges variés'
+                game_style = 'balanced'
             else:
-                insights['game_flow_assessment'] = 'Short rallies - Aggressive play'
+                flow_assessment = 'Jeu offensif avec échanges courts'
+                game_style = 'offensive'
+        else:
+            flow_assessment = 'Analyse partielle - données insuffisantes'
+            game_style = 'unknown'
         
-        # Technical recommendations
-        recommendations = []
+        insights['game_flow_assessment'] = flow_assessment
         
-        if ball_detection_rate < 0.6:
-            recommendations.append("Améliorer l'éclairage pour une meilleure détection de balle")
-            recommendations.append("Stabiliser la caméra pour réduire les mouvements")
+        # Match characteristics based on real analysis
+        match_chars = {
+            'average_rally_length': rally_avg if bounce_count > 0 and serve_count > 0 else 0,
+            'total_bounces_detected': bounce_count,
+            'total_serves_detected': serve_count,
+            'net_hits_detected': net_hits,
+            'game_intensity': len(frame_analyses) / max(1, total_frames),
+            'ball_speed_analysis': stats.get('ball_trajectory_analysis', {})
+        }
+        insights['match_characteristics'] = match_chars
         
-        if bounce_count < 3:
-            recommendations.append("Filmer des échanges plus longs pour une analyse complète")
+        # Skill assessment based on event patterns
+        skill_metrics = assess_skill_level(events, stats, ball_detection_rate)
+        insights['skill_assessment'] = skill_metrics
         
-        if serve_count == 0:
-            recommendations.append("Inclure les services dans la vidéo pour une analyse tactique")
+        # Video quality metrics
+        video_quality = assess_video_quality(frame_analyses, stats)
+        insights['video_quality_metrics'] = video_quality
         
-        trajectory_analysis = stats.get('ball_trajectory_analysis', {})
-        if trajectory_analysis.get('trajectory_smoothness', 0) > 20:
-            recommendations.append("Position de caméra instable - utiliser un trépied")
-        
+        # Generate realistic technical recommendations
+        recommendations = generate_personalized_recommendations(
+            ball_detection_rate, events, stats, skill_metrics, video_quality
+        )
         insights['technical_recommendations'] = recommendations
         
     except Exception as e:
-        logger.error(f"Error generating insights: {str(e)}")
+        logger.error(f"Error generating realistic insights: {str(e)}")
     
     return insights
+
+def calculate_rally_consistency(frame_analyses: List[Dict]) -> float:
+    """Calculate consistency of rally detection across frames"""
+    if not frame_analyses:
+        return 0.0
+    
+    ball_detected_frames = sum(1 for frame in frame_analyses if frame.get('ball_position'))
+    return ball_detected_frames / len(frame_analyses)
+
+def assess_skill_level(events: Dict, stats: Dict, ball_detection_rate: float) -> Dict[str, Any]:
+    """Assess player skill level based on actual detected patterns"""
+    skill_assessment = {
+        'estimated_level': 'intermediate',
+        'technical_consistency': 70.0,
+        'tactical_awareness': 65.0,
+        'shot_variety': 60.0,
+        'evidence_points': []
+    }
+    
+    bounce_count = events.get('ball_bounce', 0)
+    serve_count = events.get('serve', 0)
+    net_hits = events.get('net_hit', 0)
+    
+    # Base technical score on ball tracking quality (proxy for consistent shots)
+    if ball_detection_rate > 0.8:
+        skill_assessment['technical_consistency'] = 85.0
+        skill_assessment['evidence_points'].append("Coups réguliers et prévisibles")
+    elif ball_detection_rate > 0.6:
+        skill_assessment['technical_consistency'] = 75.0
+        skill_assessment['evidence_points'].append("Bonne régularité technique")
+    else:
+        skill_assessment['technical_consistency'] = 55.0
+        skill_assessment['evidence_points'].append("Technique à stabiliser")
+    
+    # Assess tactical level based on rally patterns
+    if bounce_count > 0 and serve_count > 0:
+        rally_avg = bounce_count / serve_count
+        if rally_avg > 5:
+            skill_assessment['tactical_awareness'] = 80.0
+            skill_assessment['evidence_points'].append("Patience tactique et construction de points")
+        elif rally_avg > 2:
+            skill_assessment['tactical_awareness'] = 70.0
+            skill_assessment['evidence_points'].append("Bon équilibre attaque-défense")
+        else:
+            skill_assessment['tactical_awareness'] = 50.0
+            skill_assessment['evidence_points'].append("Jeu direct, peu de construction")
+    
+    # Shot variety based on detected events diversity
+    event_types = len([k for k, v in events.items() if v > 0])
+    if event_types >= 3:
+        skill_assessment['shot_variety'] = 80.0
+        skill_assessment['estimated_level'] = 'advanced'
+    elif event_types >= 2:
+        skill_assessment['shot_variety'] = 65.0
+        skill_assessment['estimated_level'] = 'intermediate'
+    else:
+        skill_assessment['shot_variety'] = 45.0
+        skill_assessment['estimated_level'] = 'beginner'
+    
+    # Adjust for net hits (errors)
+    if net_hits > serve_count * 0.3:  # More than 30% net errors
+        skill_assessment['technical_consistency'] *= 0.8
+        skill_assessment['evidence_points'].append("Nombreuses fautes au filet à corriger")
+    
+    return skill_assessment
+
+def assess_video_quality(frame_analyses: List[Dict], stats: Dict) -> Dict[str, Any]:
+    """Assess video quality for analysis purposes"""
+    quality_metrics = {
+        'overall_quality': 'good',
+        'lighting_quality': 'adequate',
+        'camera_stability': 'stable',
+        'resolution_adequacy': 'sufficient',
+        'frame_rate_quality': 'good',
+        'recommendations': []
+    }
+    
+    if not frame_analyses:
+        quality_metrics['overall_quality'] = 'poor'
+        quality_metrics['recommendations'].append("Aucune analyse possible - vérifier le fichier vidéo")
+        return quality_metrics
+    
+    # Assess based on analysis quality scores
+    quality_scores = [frame.get('analysis_quality', 0) for frame in frame_analyses]
+    avg_quality = np.mean(quality_scores) if quality_scores else 0
+    
+    if avg_quality > 0.8:
+        quality_metrics['overall_quality'] = 'excellent'
+        quality_metrics['lighting_quality'] = 'optimal'
+        quality_metrics['camera_stability'] = 'very stable'
+    elif avg_quality > 0.6:
+        quality_metrics['overall_quality'] = 'good'
+        quality_metrics['lighting_quality'] = 'good'
+    elif avg_quality > 0.4:
+        quality_metrics['overall_quality'] = 'fair'
+        quality_metrics['lighting_quality'] = 'adequate'
+        quality_metrics['recommendations'].append("Améliorer l'éclairage pour une meilleure analyse")
+    else:
+        quality_metrics['overall_quality'] = 'poor'
+        quality_metrics['lighting_quality'] = 'insufficient'
+        quality_metrics['camera_stability'] = 'unstable'
+        quality_metrics['recommendations'].extend([
+            "Améliorer significativement l'éclairage",
+            "Stabiliser la caméra (utiliser un trépied)",
+            "Vérifier la mise au point"
+        ])
+    
+    # Assess trajectory smoothness for camera stability
+    trajectory_data = stats.get('ball_trajectory_analysis', {})
+    smoothness = trajectory_data.get('trajectory_smoothness', 0)
+    
+    if smoothness > 25:
+        quality_metrics['camera_stability'] = 'unstable'
+        quality_metrics['recommendations'].append("Stabiliser la caméra - mouvements détectés")
+    elif smoothness > 15:
+        quality_metrics['camera_stability'] = 'slightly unstable'
+        quality_metrics['recommendations'].append("Améliorer la stabilité de la caméra")
+    
+    return quality_metrics
+
+def generate_personalized_recommendations(
+    ball_detection_rate: float, 
+    events: Dict, 
+    stats: Dict, 
+    skill_metrics: Dict, 
+    video_quality: Dict
+) -> List[str]:
+    """Generate personalized recommendations based on actual analysis"""
+    recommendations = []
+    
+    # Technical recommendations based on ball detection quality
+    if ball_detection_rate < 0.5:
+        recommendations.extend([
+            "🎥 Améliorer la configuration vidéo : éclairage et angle de caméra",
+            "🏓 Utiliser une balle orange ou blanche contrastante",
+            "📹 Positionner la caméra perpendiculairement à la table"
+        ])
+    elif ball_detection_rate < 0.7:
+        recommendations.append("📱 Légère amélioration de la qualité vidéo recommandée")
+    
+    # Skill-based recommendations
+    skill_level = skill_metrics.get('estimated_level', 'intermediate')
+    technical_consistency = skill_metrics.get('technical_consistency', 70)
+    
+    if skill_level == 'beginner':
+        recommendations.extend([
+            "🎯 Priorité : régularité et placement plutôt que puissance",
+            "🏓 Travailler les coups de base (coup droit, revers, service)",
+            "📚 Objectif : 10 échanges consécutifs sans faute"
+        ])
+    elif skill_level == 'intermediate':
+        recommendations.extend([
+            "⭐ Développer la variété des coups et les effets",
+            "🧠 Travailler la tactique et la lecture de jeu",
+            "💪 Améliorer la régularité sous pression"
+        ])
+    else:  # advanced
+        recommendations.extend([
+            "🏆 Optimiser la stratégie selon l'adversaire",
+            "📊 Analyser les statistiques pour identifier les patterns",
+            "⚡ Perfectionner les coups de finition"
+        ])
+    
+    # Event-based recommendations
+    bounce_count = events.get('ball_bounce', 0)
+    serve_count = events.get('serve', 0)
+    net_hits = events.get('net_hit', 0)
+    
+    if serve_count == 0:
+        recommendations.append("🎯 Inclure les services dans la prochaine analyse")
+    
+    if bounce_count > 0 and serve_count > 0:
+        rally_avg = bounce_count / serve_count
+        if rally_avg < 2:
+            recommendations.append("⏱️ Travailler la patience - construire les points")
+        elif rally_avg > 7:
+            recommendations.append("⚔️ Développer des coups d'attaque pour conclure")
+    
+    if net_hits > max(1, serve_count * 0.2):
+        recommendations.append("📐 Attention à la hauteur de balle - éviter les fautes au filet")
+    
+    # Video quality recommendations
+    video_recs = video_quality.get('recommendations', [])
+    recommendations.extend([f"🎬 {rec}" for rec in video_recs])
+    
+    # Performance-specific recommendations based on analysis quality
+    if technical_consistency < 60:
+        recommendations.append("🔧 Focus sur la régularité technique avant la tactique")
+    elif technical_consistency > 85:
+        recommendations.append("🧠 Excellent niveau technique - optimiser l'aspect mental")
+    
+    return recommendations[:8]  # Limit to most relevant recommendations
