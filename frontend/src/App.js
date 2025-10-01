@@ -1076,7 +1076,10 @@ const ResultsPage = ({ results }) => {
                   <p className="text-gray-700 mb-4">
                     Séquences à analyser pour améliorer votre jeu • Fautes et occasions manquées
                   </p>
-                  <Button className="bg-orange-500 hover:bg-orange-600">
+                  <Button 
+                    className="bg-orange-500 hover:bg-orange-600"
+                    onClick={() => handleVideoPlay('weaknesses')}
+                  >
                     <PlayCircle className="w-4 h-4 mr-2" />
                     Analyser mes points faibles
                   </Button>
