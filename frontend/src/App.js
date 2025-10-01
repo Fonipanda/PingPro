@@ -709,16 +709,17 @@ const ResultsPage = ({ results }) => {
                 <div className="h-64 mb-6">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
-                      data={[
-                        { temps: '0min', vous: 0, adversaire: 0 },
-                        { temps: '3min', vous: 2, adversaire: 1 },
-                        { temps: '6min', vous: 4, adversaire: 2 },
-                        { temps: '9min', vous: 6, adversaire: 4 },
-                        { temps: '12min', vous: 8, adversaire: 5 },
-                        { temps: '15min', vous: 9, adversaire: 6 },
-                        { temps: '18min', vous: 10, adversaire: 7 },
-                        { temps: '21min', vous: 11, adversaire: 8 },
-                      ]}
+                      data={(() => {
+                        const matchDuration = Math.floor(results.video_info.duration_seconds / 60); // Durée en minutes
+                        const intervals = Math.min(8, Math.max(4, matchDuration)); // Entre 4 et 8 points de données
+                        const timeStep = matchDuration / (intervals - 1);
+                        
+                        return Array.from({ length: intervals }, (_, i) => ({
+                          temps: `${Math.round(i * timeStep)}min`,
+                          vous: Math.round((i / (intervals - 1)) * 11), // Progression vers 11
+                          adversaire: Math.round((i / (intervals - 1)) * 8), // Progression vers 8
+                        }));
+                      })()}
                       margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
