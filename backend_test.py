@@ -1314,10 +1314,10 @@ class PingProAPITester:
         print(f"🔄 Enhanced Pipeline Tests: {len([t for t in pipeline_tests if t['success']])}/{len(pipeline_tests)} passed")
         
         if self.tests_passed == self.tests_run:
-            print("\n🎉 All enhanced tests passed! TTNet improvements working correctly.")
+            print("\n🎉 All enhanced tests passed! TT3D advanced analysis and TTNet improvements working correctly.")
             return 0
         else:
-            print(f"\n❌ {self.tests_run - self.tests_passed} tests failed - review TTNet integration.")
+            print(f"\n❌ {self.tests_run - self.tests_passed} tests failed - review TT3D and TTNet integration.")
             
             # Show failed tests
             failed_tests = [result for result in self.test_results if not result['success']]
