@@ -122,10 +122,18 @@ class RealAnalysisValidator:
         try:
             from ttnet_analysis import analyze_video_with_ttn
             
-            # Create three different test videos
-            video1 = self.create_test_video(1, 50)
-            video2 = self.create_test_video(2, 50)  # Same size, different content
-            video3 = self.create_test_video(3, 100)  # Different size and content
+            # Get different test videos
+            test_videos = self.get_test_videos()
+            if len(test_videos) < 3:
+                self.log_test(
+                    "Video Uniqueness by Content",
+                    False,
+                    f"Need at least 3 videos, found {len(test_videos)}"
+                )
+                return False, None
+            
+            # Use first 3 videos
+            video1, video2, video3 = test_videos[:3]
             
             # Analyze each video
             results1 = analyze_video_with_ttn(video1)
@@ -154,10 +162,6 @@ class RealAnalysisValidator:
                     f"Duplicate hashes found: {hash1}, {hash2}, {hash3}"
                 )
                 success = False
-            
-            # Cleanup
-            for video in [video1, video2, video3]:
-                os.unlink(video)
                 
             return success, (results1, results2, results3) if success else None
             
