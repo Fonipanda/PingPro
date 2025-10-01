@@ -1138,8 +1138,11 @@ const ResultsPage = ({ results }) => {
                             innerRadius={30}
                             outerRadius={60}
                             dataKey="value"
-                            label={({ name, value }) => `${name}: ${value}`}
+                            label={({ name, value }) => `${value}`}
                           >
+                            <Cell fill="#dc2626" />
+                            <Cell fill="#f97316" />
+                            <Cell fill="#fbbf24" />
                           </Pie>
                           <Tooltip />
                         </PieChart>
