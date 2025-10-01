@@ -1426,13 +1426,13 @@ const ResultsPage = ({ results }) => {
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                       data={[
-                        { rally: 'Rally 1', longueur: 6, intensité: 75, vous: 8, adversaire: 4 },
-                        { rally: 'Rally 2', longueur: 4, intensité: 60, vous: 6, adversaire: 3 },
-                        { rally: 'Rally 3', longueur: 12, intensité: 90, vous: 15, adversaire: 8 },
-                        { rally: 'Rally 4', longueur: 8, intensité: 80, vous: 10, adversaire: 6 },
-                        { rally: 'Rally 5', longueur: 5, intensité: 65, vous: 7, adversaire: 4 },
-                        { rally: 'Rally 6', longueur: 7, intensité: 85, vous: 9, adversaire: 5 },
-                        { rally: 'Rally 7', longueur: 9, intensité: 70, vous: 12, adversaire: 7 },
+                        { echange: 'Échange 1', longueur: 6, intensité: 75, vous: 8, adversaire: 4 },
+                        { echange: 'Échange 2', longueur: 4, intensité: 60, vous: 6, adversaire: 3 },
+                        { echange: 'Échange 3', longueur: 12, intensité: 90, vous: 15, adversaire: 8 },
+                        { echange: 'Échange 4', longueur: 8, intensité: 80, vous: 10, adversaire: 6 },
+                        { echange: 'Échange 5', longueur: 5, intensité: 65, vous: 7, adversaire: 4 },
+                        { echange: 'Échange 6', longueur: 7, intensité: 85, vous: 9, adversaire: 5 },
+                        { echange: 'Échange 7', longueur: 9, intensité: 70, vous: 12, adversaire: 7 },
                       ]}
                       margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                     >
