@@ -1,4 +1,5 @@
 from ttnet_analysis import analyze_video_with_ttnet, TTNetAnalyzer
+from video_processor import VideoProcessor, TableTennisLexicon
 from fastapi import FastAPI, APIRouter, File, UploadFile, HTTPException, BackgroundTasks, Form
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
