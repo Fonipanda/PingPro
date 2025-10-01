@@ -523,15 +523,20 @@ async def generate_enhanced_coaching_recommendations(analysis_data: Dict[str, An
     
     return unique_recommendations[:8]  # Limit to 8 most relevant recommendations
 async def analyze_frames_with_vision_enhanced_lexicon(frames_data: List[str], params: AnalysisRequest, ttnet_results: Dict[str, Any], video_processing_results: Dict[str, Any]) -> Dict[str, Any]:
-    """Enhanced analysis combining LLM vision with TTNet insights and technical lexicon"""
+    """Enhanced analysis combining LLM vision with real TTNet insights and technical lexicon"""
     from emergentintegrations.llm.chat import LlmChat, UserMessage
     import uuid
     
-    # Extract TTNet insights for prompt enhancement
-    ball_detection_rate = ttnet_results.get("match_statistics", {}).get("ball_detection_rate", 0)
-    events = ttnet_results.get("match_statistics", {}).get("event_summary", {})
-    trajectory_analysis = ttnet_results.get("match_statistics", {}).get("ball_trajectory_analysis", {})
+    # Extract real TTNet insights for prompt enhancement
+    stats = ttnet_results.get("match_statistics", {})
     technical_insights = ttnet_results.get("technical_insights", {})
+    skill_assessment = technical_insights.get("skill_assessment", {})
+    match_characteristics = technical_insights.get("match_characteristics", {})
+    video_quality = technical_insights.get("video_quality_metrics", {})
+    
+    ball_detection_rate = stats.get("ball_detection_rate", 0)
+    events = stats.get("event_summary", {})
+    trajectory_analysis = stats.get("ball_trajectory_analysis", {})
     
     # Extract video processing insights
     lexicon_analysis = video_processing_results.get("technical_analysis", {})
