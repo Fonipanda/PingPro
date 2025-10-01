@@ -550,39 +550,41 @@ const ResultsPage = ({ results }) => {
               </CardContent>
             </Card>
 
-            {/* Statistiques des coups */}
+            {/* Statistiques des coups avec graphique */}
             <div className="grid lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
                   <CardTitle>Statistiques des Coups</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="bg-emerald-50 rounded-lg p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="font-semibold">Coups en moyenne (Vous)</span>
-                        <span className="text-2xl font-bold text-emerald-600">
-                          {results.performance_metrics.rally_analysis ? 
-                            results.performance_metrics.rally_analysis.average_rally_length.toFixed(1) : '3.2'}
-                        </span>
-                      </div>
-                      <div className="w-full bg-emerald-200 rounded-full h-2">
-                        <div className="bg-emerald-500 h-2 rounded-full" style={{width: '65%'}}></div>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-blue-50 rounded-lg p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="font-semibold">Coups par point (Vous)</span>
-                        <span className="text-2xl font-bold text-blue-600">
-                          {results.performance_metrics.rally_analysis ? 
-                            (results.performance_metrics.rally_analysis.total_bounces / Math.max(1, results.performance_metrics.rally_analysis.total_rallies)).toFixed(1) : '2.8'}
-                        </span>
-                      </div>
-                      <div className="w-full bg-blue-200 rounded-full h-2">
-                        <div className="bg-blue-500 h-2 rounded-full" style={{width: '60%'}}></div>
-                      </div>
-                    </div>
+                  <div className="h-64 mb-4">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={[
+                          {
+                            name: 'Vous',
+                            'Coups moyenne': results.performance_metrics.rally_analysis ? 
+                              results.performance_metrics.rally_analysis.average_rally_length : 3.2,
+                            'Coups par point': results.performance_metrics.rally_analysis ? 
+                              (results.performance_metrics.rally_analysis.total_bounces / Math.max(1, results.performance_metrics.rally_analysis.total_rallies)) : 2.8,
+                          },
+                          {
+                            name: 'Adversaire',
+                            'Coups moyenne': 2.8,
+                            'Coups par point': 2.1,
+                          }
+                        ]}
+                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="Coups moyenne" fill="#10b981" />
+                        <Bar dataKey="Coups par point" fill="#3b82f6" />
+                      </BarChart>
+                    </ResponsiveContainer>
                   </div>
                   
                   <div className="mt-6 p-4 bg-gray-50 rounded-lg">
