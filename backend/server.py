@@ -900,41 +900,7 @@ def generate_highlights_from_video_processor(video_processing_results: Dict[str,
 
 # Duplicate function removed - using the first definition above
 
-def generate_highlights_from_video_processor(video_processing_results: Dict[str, Any], video_duration: float) -> List[float]:
-    """Generate highlight timestamps from video processor rally segments"""
-    highlights = []
-    
-    # Extract rally segments
-    rally_segments = video_processing_results.get("rally_segments", [])
-    
-    # Sort by quality and take best moments
-    if rally_segments:
-        sorted_segments = sorted(rally_segments, key=lambda r: r.get('quality_score', 0), reverse=True)
-        
-        for segment in sorted_segments[:8]:  # Top 8 segments
-            start_time = segment.get('start_time', 0)
-            if start_time <= video_duration:
-                highlights.append(start_time)
-    
-    # If no segments, use compilation data
-    compilations = video_processing_results.get("compilations", {})
-    if not highlights and compilations:
-        # Generate highlights at 20%, 50%, 80% of video
-        highlights = [
-            video_duration * 0.2,
-            video_duration * 0.5,
-            video_duration * 0.8
-        ]
-    
-    # Fallback to default highlights
-    if not highlights and video_duration > 10:
-        highlights = [
-            video_duration * 0.25,
-            video_duration * 0.5,
-            video_duration * 0.75
-        ]
-    
-    return highlights[:10]  # Limit to 10 highlights
+# Duplicate function removed - using the first definition above
 
 def extract_movement_analysis(ttnet_results: Dict[str, Any]) -> Dict[str, Any]:
     """Extract movement analysis from TTNet results"""
