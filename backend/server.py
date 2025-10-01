@@ -1237,52 +1237,45 @@ async def process_video_analysis_with_tt3d(file_path: str, params: AnalysisReque
         analysis_status[analysis_id].update({"stage": "Compiling videos with 3D analysis", "progress": 95})
         video_compilations = video_processing_results.get("compilations", {})
         
+        # Get video info
+        cap = cv2.VideoCapture(file_path)
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        duration = frame_count / fps if fps > 0 else 0
+        cap.release()
+        
+        video_info = VideoInfo(
+            duration_seconds=duration,
+            frame_count=frame_count,
+            fps=fps,
+            resolution=f"{width}x{height}"
+        )
+        
+        # Create enhanced technical analysis with TT3D data
+        technical_analysis = TechnicalAnalysis(
+            stroke_analysis=llm_analysis.get("stroke_analysis", {}),
+            positioning_analysis=llm_analysis.get("positioning_analysis", {}),
+            timing_analysis=llm_analysis.get("timing_analysis", {}),
+            movement_analysis=extract_movement_analysis_lexicon(ttnet_results, video_processing_results),
+            ttnet_analysis=ttnet_results.get("match_statistics", {})
+        )
+        
+        # Generate highlights
+        highlights = generate_highlights_from_video_processor(video_processing_results, duration)
+        
         # Create final result with TT3D data
         final_result = AnalysisResult(
             analysis_id=analysis_id,
-            video_info={
-                "filename": Path(file_path).name,
-                "duration_seconds": ttnet_results.get("video_duration", 0),
-                "frame_count": ttnet_results.get("total_frames", 0),
-                "resolution": ttnet_results.get("resolution", "Unknown"),
-                "camera_quality": tt3d_results.quality_assessment.get('camera_calibration_quality', 'good'),
-                "tracking_quality": tt3d_results.quality_assessment.get('ball_tracking_quality', 'good')
-            },
+            video_info=video_info,
+            technical_analysis=technical_analysis,
             performance_metrics=performance_metrics,
             recommendations=enhanced_recommendations,
-            detailed_analysis=llm_analysis,
-            coaching_insights={
-                "strengths": llm_analysis.get("strengths", []),
-                "weaknesses": llm_analysis.get("improvement_areas", []),
-                "technique_analysis": llm_analysis.get("stroke_analysis", {}),
-                "tactical_advice": enhanced_recommendations[:3],
-                "physics_insights": tt3d_results.tactical_insights,
-                "3d_metrics": tt3d_results.physics_metrics
-            },
+            highlights_timestamps=highlights,
+            confidence_score=calculate_enhanced_confidence_score(ttnet_results, llm_analysis),
             video_compilations=video_compilations,
-            ttnet_insights=ttnet_results.get("technical_insights", {}),
-            lexicon_analysis=video_processing_results.get("technical_analysis", {}),
-            tt3d_analysis={
-                "ball_trajectory_3d": {
-                    "trajectory_length": len(tt3d_results.ball_trajectory.positions_3d),
-                    "bounce_count": len(tt3d_results.ball_trajectory.bounce_points),
-                    "physics_consistency": tt3d_results.ball_trajectory.physics_consistency,
-                    "max_speed": tt3d_results.physics_metrics.get("max_speed", 0),
-                    "avg_speed": tt3d_results.physics_metrics.get("avg_speed", 0),
-                    "spin_analysis": {
-                        "max_spin": tt3d_results.physics_metrics.get("max_spin", 0),
-                        "avg_spin": tt3d_results.physics_metrics.get("avg_spin", 0)
-                    }
-                },
-                "camera_calibration": {
-                    "reprojection_error": tt3d_results.camera_params.reprojection_error,
-                    "focal_length": tt3d_results.camera_params.focal_length,
-                    "calibration_quality": tt3d_results.quality_assessment.get('camera_calibration_quality')
-                },
-                "quality_assessment": tt3d_results.quality_assessment,
-                "tactical_insights": tt3d_results.tactical_insights,
-                "event_timeline": tt3d_results.event_timeline
-            }
+            lexicon_analysis=video_processing_results.get("technical_analysis", {})
         )
         
         # Store result
