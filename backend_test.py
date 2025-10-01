@@ -1023,6 +1023,12 @@ class PingProAPITester:
         
         self.test_invalid_analysis_id()
         
+        # TT3D Advanced Analysis Tests
+        print("\n🚀 TT3D Advanced Analysis Tests:")
+        self.test_tt3d_dependencies()
+        self.test_tt3d_advanced_analysis_integration()
+        self.test_tt3d_server_integration()
+        
         # Enhanced TTNet Tests
         print("\n🧠 TTNet Analysis Enhancement Tests:")
         self.test_ttnet_analysis_integration()
