@@ -1219,7 +1219,7 @@ async def process_video_analysis_with_tt3d(file_path: str, params: AnalysisReque
         
         # Phase 4: Enhanced LLM Analysis with TT3D Context
         analysis_status[analysis_id].update({"stage": "Extracting frames for AI analysis", "progress": 60})
-        frames_data = extract_frames_for_analysis(file_path, max_frames=8)
+        frames_data = await extract_video_frames(file_path, target_fps=1)
         
         analysis_status[analysis_id].update({"stage": "Analyzing with AI Vision + TT3D insights", "progress": 70})
         llm_analysis = await analyze_frames_with_vision_tt3d_enhanced(frames_data, params, tt3d_results, ttnet_results, video_processing_results)
