@@ -1235,7 +1235,7 @@ async def process_video_analysis_with_tt3d(file_path: str, params: AnalysisReque
         
         # Phase 7: Video Compilation with TT3D Insights
         analysis_status[analysis_id].update({"stage": "Compiling videos with 3D analysis", "progress": 95})
-        video_compilations = compile_videos_with_tt3d(video_processing_results, tt3d_results, analysis_id)
+        video_compilations = video_processing_results.get("compilations", {})
         
         # Create final result with TT3D data
         final_result = AnalysisResult(
