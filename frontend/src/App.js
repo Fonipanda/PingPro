@@ -206,19 +206,12 @@ const HomePage = () => {
             </CardHeader>
             <CardContent className="space-y-8">
               {/* Configuration */}
-              <div className="grid md:grid-cols-2 gap-6">
-                <div>
+              <div className="grid md:grid-cols-1 gap-6">
+                <div className="max-w-md mx-auto">
                   <label className="block text-sm font-semibold text-gray-700 mb-3">
-                    Côté du joueur à analyser
+                    Joueur à analyser
                   </label>
                   <div className="flex space-x-3">
-                    <Button
-                      variant={playerSide === 'droite' ? 'default' : 'outline'}
-                      onClick={() => setPlayerSide('droite')}
-                      className="flex-1"
-                    >
-                      Côté droit
-                    </Button>
                     <Button
                       variant={playerSide === 'gauche' ? 'default' : 'outline'}
                       onClick={() => setPlayerSide('gauche')}
@@ -226,26 +219,13 @@ const HomePage = () => {
                     >
                       Côté gauche
                     </Button>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-3">
-                    Niveau de jeu
-                  </label>
-                  <div className="flex space-x-2">
-                    {['debutant', 'intermediaire', 'avance'].map((level) => (
-                      <Button
-                        key={level}
-                        variant={skillLevel === level ? 'default' : 'outline'}
-                        onClick={() => setSkillLevel(level)}
-                        className="flex-1 capitalize"
-                        size="sm"
-                      >
-                        {level === 'debutant' ? 'Débutant' : 
-                         level === 'intermediaire' ? 'Intermédiaire' : 'Avancé'}
-                      </Button>
-                    ))}
+                    <Button
+                      variant={playerSide === 'droite' ? 'default' : 'outline'}
+                      onClick={() => setPlayerSide('droite')}
+                      className="flex-1"
+                    >
+                      Côté droit
+                    </Button>
                   </div>
                 </div>
               </div>
