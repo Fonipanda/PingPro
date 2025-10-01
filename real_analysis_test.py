@@ -47,27 +47,11 @@ class RealAnalysisValidator:
             print(f"    Details: {details}")
         print()
 
-    def create_test_video(self, content_variation=1, size_kb=50):
-        """Create test video files with different characteristics"""
-        temp_file = tempfile.NamedTemporaryFile(suffix='.mp4', delete=False)
-        
-        # Create different content based on variation
-        base_header = b'\x20ftypmp42mp42isom'
-        
-        # Vary content to create different hashes
-        if content_variation == 1:
-            content = base_header + b'VIDEO_TYPE_A' + b'0' * (size_kb * 1024 - len(base_header) - 12)
-        elif content_variation == 2:
-            content = base_header + b'VIDEO_TYPE_B' + b'1' * (size_kb * 1024 - len(base_header) - 12)
-        elif content_variation == 3:
-            content = base_header + b'VIDEO_TYPE_C' + b'2' * (size_kb * 1024 - len(base_header) - 12)
-        else:
-            content = base_header + f'VIDEO_TYPE_{content_variation}'.encode() + b'X' * (size_kb * 1024 - len(base_header) - 20)
-        
-        temp_file.write(content)
-        temp_file.close()
-        
-        return temp_file.name
+    def get_test_videos(self):
+        """Get existing video files for testing"""
+        import glob
+        video_files = glob.glob('/app/backend/uploads/*.mp4')
+        return video_files[:4] if len(video_files) >= 4 else video_files  # Use up to 4 videos
 
     def test_real_analysis_function_usage(self):
         """Test that analyze_video_with_ttn() is being used for real analysis"""
