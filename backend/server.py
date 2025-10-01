@@ -1542,6 +1542,98 @@ async def get_compilation_video(analysis_id: str, video_type: str):
         filename=f"{video_type}_{analysis_id}.mp4"
     )
 
+# Real-time analysis endpoints
+@app.websocket("/ws/realtime/{client_id}")
+async def websocket_realtime(websocket: WebSocket, client_id: str):
+    """WebSocket endpoint for real-time table tennis analysis"""
+    await websocket_endpoint(websocket, client_id)
+
+@app.get("/api/video-stream")
+async def video_stream():
+    """HTTP video stream endpoint"""
+    return get_video_stream()
+
+@app.post("/api/realtime/start")
+async def start_realtime_analysis(request: dict):
+    """Start real-time analysis"""
+    video_source = request.get("video_source", 0)
+    success = stream_manager.start_video_analysis(video_source)
+    
+    return {
+        "success": success,
+        "message": "Real-time analysis started" if success else "Failed to start analysis",
+        "video_source": video_source
+    }
+
+@app.post("/api/realtime/stop") 
+async def stop_realtime_analysis():
+    """Stop real-time analysis"""
+    stream_manager.stop_video_analysis()
+    return {
+        "success": True,
+        "message": "Real-time analysis stopped"
+    }
+
+@app.get("/api/realtime/statistics")
+async def get_realtime_statistics():
+    """Get current real-time statistics"""
+    if stream_manager.analyzer:
+        stats = stream_manager.analyzer.get_real_time_statistics()
+        return {
+            "success": True,
+            "statistics": stats
+        }
+    else:
+        return {
+            "success": False,
+            "message": "No active analysis session"
+        }
+
+@app.post("/api/realtime/reset")
+async def reset_realtime_game():
+    """Reset game state for new match"""
+    if stream_manager.analyzer:
+        stream_manager.analyzer.reset_game_state()
+        return {
+            "success": True,
+            "message": "Game state reset"
+        }
+    else:
+        return {
+            "success": False,
+            "message": "No active analysis session"
+        }
+
+@app.get("/api/realtime/status")
+async def get_realtime_status():
+    """Get real-time analysis status"""
+    return {
+        "streaming": stream_manager.streaming,
+        "active_connections": len(stream_manager.active_connections),
+        "current_stream": stream_manager.current_stream,
+        "analyzer_ready": stream_manager.analyzer is not None
+    }
+
+# Match recording endpoints
+@app.post("/api/recording/start")
+async def start_match_recording():
+    """Start recording match data"""
+    match_recorder.start_recording()
+    return {
+        "success": True,
+        "message": "Match recording started"
+    }
+
+@app.post("/api/recording/stop")
+async def stop_match_recording():
+    """Stop recording and get match data"""
+    match_data = match_recorder.stop_recording()
+    return {
+        "success": True,
+        "message": "Match recording stopped",
+        "match_data": match_data
+    }
+
 @api_router.get("/analysis/{analysis_id}/results")
 async def get_analysis_results(analysis_id: str):
     """Get analysis results"""
