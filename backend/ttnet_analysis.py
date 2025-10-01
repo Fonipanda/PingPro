@@ -668,6 +668,64 @@ class TTNetAnalyzer:
             }
         
         return stats
+    
+    def analyze_video_real(self, video_path: str, max_frames: int = 300) -> Dict[str, Any]:
+        """
+        Perform REAL video analysis with actual frame processing
+        Returns results based on actual video content analysis
+        """
+        results = {
+            'frame_analyses': [],
+            'match_statistics': {},
+            'video_properties': {}
+        }
+        
+        try:
+            cap = cv2.VideoCapture(video_path)
+            if not cap.isOpened():
+                logger.error(f"Cannot open video for real analysis: {video_path}")
+                return results
+            
+            frame_count = 0
+            processed_frames = 0
+            
+            while processed_frames < max_frames:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+                
+                # Process every 5th frame for performance
+                if frame_count % 5 == 0:
+                    try:
+                        # Perform actual frame analysis
+                        frame_result = self.analyze_frame(frame)
+                        
+                        # Add ball detection flag for statistics
+                        ball_detected = frame_result.get('ball_position') is not None
+                        frame_result['ball_detected'] = ball_detected
+                        
+                        results['frame_analyses'].append(frame_result)
+                        processed_frames += 1
+                        
+                        if processed_frames % 50 == 0:
+                            logger.info(f"Real analysis: processed {processed_frames}/{max_frames} frames")
+                            
+                    except Exception as e:
+                        logger.warning(f"Error in real frame analysis {frame_count}: {str(e)}")
+                
+                frame_count += 1
+            
+            cap.release()
+            
+            # Generate match statistics from real analysis
+            results['match_statistics'] = self.get_match_statistics()
+            
+            logger.info(f"Real analysis completed: {processed_frames} frames processed")
+            
+        except Exception as e:
+            logger.error(f"Error in real video analysis: {str(e)}")
+        
+        return results
 
 def analyze_video_with_ttnet(video_path: str, target_fps: int = 30) -> Dict[str, Any]:
     """
