@@ -446,32 +446,32 @@ class RealAnalysisValidator:
                 try:
                     fake_analysis = {"frame_analyses": []}
                     stats = calculate_real_video_statistics(test_video, fake_analysis, 60.0, 1800)
-                
-                required_stats = ['ball_detection_rate', 'event_summary', 'ball_trajectory_analysis', 'video_characteristics']
-                stats_complete = all(field in stats for field in required_stats)
-                
-                if stats_complete:
-                    self.log_test(
-                        "Real Analysis Functions - calculate_real_video_statistics",
-                        True,
-                        f"Statistics calculated with detection_rate={stats['ball_detection_rate']:.3f}"
-                    )
-                    stats_function_works = True
-                else:
+                    
+                    required_stats = ['ball_detection_rate', 'event_summary', 'ball_trajectory_analysis', 'video_characteristics']
+                    stats_complete = all(field in stats for field in required_stats)
+                    
+                    if stats_complete:
+                        self.log_test(
+                            "Real Analysis Functions - calculate_real_video_statistics",
+                            True,
+                            f"Statistics calculated with detection_rate={stats['ball_detection_rate']:.3f}"
+                        )
+                        stats_function_works = True
+                    else:
+                        self.log_test(
+                            "Real Analysis Functions - calculate_real_video_statistics",
+                            False,
+                            f"Missing statistics fields: {[f for f in required_stats if f not in stats]}"
+                        )
+                        stats_function_works = False
+                        
+                except Exception as e:
                     self.log_test(
                         "Real Analysis Functions - calculate_real_video_statistics",
                         False,
-                        f"Missing statistics fields: {[f for f in required_stats if f not in stats]}"
+                        f"Error in calculate_real_video_statistics: {str(e)}"
                     )
                     stats_function_works = False
-                    
-            except Exception as e:
-                self.log_test(
-                    "Real Analysis Functions - calculate_real_video_statistics",
-                    False,
-                    f"Error in calculate_real_video_statistics: {str(e)}"
-                )
-                stats_function_works = False
             
             # Test generate_video_hash function
             if test_videos:
