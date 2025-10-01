@@ -1148,6 +1148,7 @@ class PingProAPITester:
         # Enhanced TTNet Tests
         print("\n🧠 TTNet Analysis Enhancement Tests:")
         self.test_ttnet_analysis_integration()
+        self.test_tt3d_api_endpoint_usage()
         self.test_enhanced_analysis_pipeline()
         
         print("\n🎬 Video Compilation Tests:")
