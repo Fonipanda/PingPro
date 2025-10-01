@@ -1,7 +1,8 @@
 from ttnet_analysis import analyze_video_with_ttnet, TTNetAnalyzer
 from video_processor import VideoProcessor, TableTennisLexicon
 from fastapi import FastAPI, APIRouter, File, UploadFile, HTTPException, BackgroundTasks, Form
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
