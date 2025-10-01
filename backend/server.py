@@ -1300,12 +1300,10 @@ async def process_video_analysis_with_tt3d(file_path: str, params: AnalysisReque
         analysis_results[analysis_id] = final_result
         
         # Update final status
-        analysis_status[analysis_id] = {
-            "status": "completed", 
-            "stage": "TT3D analysis complete", 
-            "progress": 100,
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        }
+        analysis_status[analysis_id].status = "completed"
+        analysis_status[analysis_id].current_step = "TT3D analysis complete"
+        analysis_status[analysis_id].progress = 100.0
+        analysis_status[analysis_id].completed_at = datetime.utcnow()
         
         logger.info(f"TT3D advanced video analysis completed successfully for {analysis_id}")
         
