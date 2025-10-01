@@ -1409,6 +1409,8 @@ async def get_compilation_video(analysis_id: str, video_type: str):
         media_type="video/mp4", 
         filename=f"{video_type}_{analysis_id}.mp4"
     )
+
+@api_router.get("/analysis/{analysis_id}/results")
 async def get_analysis_results(analysis_id: str):
     """Get analysis results"""
     if analysis_id not in analysis_status:
