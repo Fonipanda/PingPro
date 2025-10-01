@@ -1780,10 +1780,10 @@ class PingProAPITester:
             return False
 
     def run_all_tests(self):
-        """Run all backend API tests including enhanced TTNet features"""
+        """Run all backend API tests including enhanced TTNet features and real-time analysis"""
         print("🏓 Starting Enhanced PingPro Backend API Tests")
-        print("🔬 Focus: TTNet Analysis Improvements & Enhanced Features")
-        print("=" * 60)
+        print("🔬 Focus: TTNet Analysis Improvements, Enhanced Features & Real-Time Analysis")
+        print("=" * 80)
         
         # Basic API Tests
         print("\n📡 Basic API Functionality Tests:")
@@ -1811,6 +1811,16 @@ class PingProAPITester:
         self.test_tt3d_api_endpoint_usage()
         self.test_enhanced_analysis_pipeline()
         
+        # Real-Time Analysis Tests (NEW)
+        print("\n⚡ Real-Time Analysis System Tests:")
+        self.test_real_time_modules_import()
+        self.test_ttnet_realtime_model_initialization()
+        self.test_video_stream_manager_initialization()
+        self.test_realtime_api_endpoints()
+        self.test_websocket_endpoint_availability()
+        self.test_match_recorder_functionality()
+        self.test_real_time_integration_with_existing_system()
+        
         print("\n🎬 Video Compilation Tests:")
         self.test_video_compilation_endpoints()
         
@@ -1819,27 +1829,29 @@ class PingProAPITester:
         self.test_error_handling_improvements()
         
         # Print summary
-        print("\n" + "=" * 60)
+        print("\n" + "=" * 80)
         print(f"📊 Enhanced Test Summary:")
         print(f"   Tests Run: {self.tests_run}")
         print(f"   Tests Passed: {self.tests_passed}")
         print(f"   Tests Failed: {self.tests_run - self.tests_passed}")
         print(f"   Success Rate: {(self.tests_passed/self.tests_run*100):.1f}%")
         
-        # Detailed results for TT3D and TTNet features
+        # Detailed results for different test categories
         tt3d_tests = [result for result in self.test_results if 'TT3D' in result['test_name']]
         ttnet_tests = [result for result in self.test_results if 'TTNet' in result['test_name']]
         pipeline_tests = [result for result in self.test_results if 'Pipeline' in result['test_name']]
+        realtime_tests = [result for result in self.test_results if any(keyword in result['test_name'] for keyword in ['Real-Time', 'WebSocket', 'Stream', 'Match'])]
         
         print(f"\n🚀 TT3D Advanced Analysis Tests: {len([t for t in tt3d_tests if t['success']])}/{len(tt3d_tests)} passed")
         print(f"🔬 TTNet Analysis Tests: {len([t for t in ttnet_tests if t['success']])}/{len(ttnet_tests)} passed")
         print(f"🔄 Enhanced Pipeline Tests: {len([t for t in pipeline_tests if t['success']])}/{len(pipeline_tests)} passed")
+        print(f"⚡ Real-Time Analysis Tests: {len([t for t in realtime_tests if t['success']])}/{len(realtime_tests)} passed")
         
         if self.tests_passed == self.tests_run:
-            print("\n🎉 All enhanced tests passed! TT3D advanced analysis and TTNet improvements working correctly.")
+            print("\n🎉 All enhanced tests passed! TT3D advanced analysis, TTNet improvements, and real-time system working correctly.")
             return 0
         else:
-            print(f"\n❌ {self.tests_run - self.tests_passed} tests failed - review TT3D and TTNet integration.")
+            print(f"\n❌ {self.tests_run - self.tests_passed} tests failed - review TT3D, TTNet, and real-time integration.")
             
             # Show failed tests
             failed_tests = [result for result in self.test_results if not result['success']]
