@@ -919,13 +919,14 @@ const ResultsPage = ({ results }) => {
                   <div className="space-y-4">
                     <div className="bg-emerald-50 rounded-lg p-4">
                       <div className="flex justify-between items-center mb-2">
-                        <span className="font-semibold">Services remportés (Vous)</span>
+                        <span className="font-semibold">Points gagnés sur service (Vous)</span>
                         <span className="text-2xl font-bold text-emerald-600">9</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Services remportés (Adversaire)</span>
+                        <span className="text-sm text-gray-600">Points gagnés sur service (Adversaire)</span>
                         <span className="text-lg font-semibold text-gray-500">4</span>
                       </div>
+                      <div className="text-xs text-emerald-700 mt-1">Échanges remportés après votre service</div>
                     </div>
 
                     <div className="bg-blue-50 rounded-lg p-4">
@@ -937,17 +938,19 @@ const ResultsPage = ({ results }) => {
                         <span className="text-sm text-gray-600">Services ratés (Adversaire)</span>
                         <span className="text-lg font-semibold text-gray-500">6</span>
                       </div>
+                      <div className="text-xs text-blue-700 mt-1">Services directement ratés (faute de service)</div>
                     </div>
 
                     <div className="bg-yellow-50 rounded-lg p-4">
                       <div className="flex justify-between items-center mb-2">
-                        <span className="font-semibold">Services gagnants (Vous)</span>
+                        <span className="font-semibold">Aces - Services directs (Vous)</span>
                         <span className="text-2xl font-bold text-yellow-600">5</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Services gagnants (Adversaire)</span>
+                        <span className="text-sm text-gray-600">Aces - Services directs (Adversaire)</span>
                         <span className="text-lg font-semibold text-gray-500">1</span>
                       </div>
+                      <div className="text-xs text-yellow-700 mt-1">Points gagnés directement au service (aces)</div>
                     </div>
                   </div>
                   
