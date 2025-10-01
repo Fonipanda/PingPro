@@ -504,7 +504,7 @@ const ResultsPage = ({ results }) => {
 
       <div className="container mx-auto px-6 py-8">
         <Tabs defaultValue="match-compilation" className="space-y-8">
-          <TabsList className="grid w-full grid-cols-4 bg-white shadow-sm">
+          <TabsList className="grid w-full grid-cols-5 bg-white shadow-sm">
             <TabsTrigger value="match-compilation" className="flex items-center space-x-2">
               <Video className="w-4 h-4" />
               <span>Match Compilé</span>
@@ -520,6 +520,10 @@ const ResultsPage = ({ results }) => {
             <TabsTrigger value="best-rallies" className="flex items-center space-x-2">
               <Trophy className="w-4 h-4" />
               <span>Meilleurs Échanges</span>
+            </TabsTrigger>
+            <TabsTrigger value="ball-impacts" className="flex items-center space-x-2">
+              <Target className="w-4 h-4" />
+              <span>Impacts Balle</span>
             </TabsTrigger>
           </TabsList>
 
