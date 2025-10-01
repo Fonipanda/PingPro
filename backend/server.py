@@ -279,21 +279,29 @@ async def analyze_frames_with_vision_enhanced(frames_data: List[str], params: An
     trajectory_analysis = ttnet_results.get("match_statistics", {}).get("ball_trajectory_analysis", {})
     technical_insights = ttnet_results.get("technical_insights", {})
     
-    # Enhanced prompt with TTNet data
-    prompt = f"""Tu es un expert entraîneur de tennis de table avec plus de 20 ans d'expérience. 
-    Analyse ces images extraites d'une vidéo de match de tennis de table.
+    # Enhanced prompt with real TTNet analysis data
+    estimated_level = skill_assessment.get('estimated_level', params.skill_level)
+    technical_consistency = skill_assessment.get('technical_consistency', 70)
+    evidence_points = skill_assessment.get('evidence_points', [])
+    avg_rally_length = match_characteristics.get('average_rally_length', 0)
     
-    CONTEXTE:
-    - Niveau du joueur: {params.skill_level}
+    prompt = f"""Tu es un expert entraîneur de tennis de table avec plus de 20 ans d'expérience. 
+    Analyse ces images en tenant compte des données d'analyse automatique déjà effectuées sur cette vidéo.
+    
+    CONTEXTE DU JOUEUR:
+    - Niveau déclaré: {params.skill_level}
+    - Niveau estimé par analyse: {estimated_level}
     - Côté du joueur à analyser: {params.player_side}
     - Zones d'analyse prioritaires: {', '.join(params.focus_areas)}
     
-    DONNÉES D'ANALYSE VIDÉO AVANCÉE:
-    - Taux de détection de balle: {ball_detection_rate:.1%}
-    - Rebonds détectés: {events.get('ball_bounce', 0)}
-    - Services détectés: {events.get('serve', 0)}
-    - Qualité du suivi de balle: {technical_insights.get('ball_tracking_quality', 'Inconnue')}
-    - Évaluation du flow de jeu: {technical_insights.get('game_flow_assessment', 'Inconnu')}
+    RÉSULTATS D'ANALYSE AUTOMATIQUE RÉELLE:
+    - Qualité de détection de balle: {ball_detection_rate:.1%} ({technical_insights.get('ball_tracking_quality', 'Inconnue')})
+    - Échanges analysés: {events.get('ball_bounce', 0)} rebonds, {events.get('serve', 0)} services
+    - Longueur moyenne des échanges: {avg_rally_length:.1f} coups
+    - Style de jeu détecté: {technical_insights.get('game_flow_assessment', 'Non déterminé')}
+    - Consistance technique mesurée: {technical_consistency:.0f}/100
+    - Observations automatiques: {'; '.join(evidence_points[:3]) if evidence_points else 'Aucune observation spécifique'}
+    - Qualité vidéo: {video_quality.get('overall_quality', 'Bonne')}
     
     ANALYSE TECHNIQUE DÉTAILLÉE À EFFECTUER:
     
