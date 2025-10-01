@@ -1096,13 +1096,17 @@ const ResultsPage = ({ results }) => {
                 <div className="h-64 mb-6">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart
-                      data={[
-                        { temps: '0-5min', 'Vos fautes': 0, 'Fautes adversaire': 1 },
-                        { temps: '5-10min', 'Vos fautes': 2, 'Fautes adversaire': 1 },
-                        { temps: '10-15min', 'Vos fautes': 4, 'Fautes adversaire': 3 },
-                        { temps: '15-20min', 'Vos fautes': 6, 'Fautes adversaire': 4 },
-                        { temps: '20-25min', 'Vos fautes': 7, 'Fautes adversaire': 5 },
-                      ]}
+                      data={(() => {
+                        const matchDuration = Math.floor(results.video_info.duration_seconds / 60);
+                        const intervals = Math.min(5, Math.max(3, Math.ceil(matchDuration / 5))); // Intervalles de 5min
+                        const timeStep = matchDuration / intervals;
+                        
+                        return Array.from({ length: intervals + 1 }, (_, i) => ({
+                          temps: i === 0 ? '0min' : `${Math.round(i * timeStep)}min`,
+                          'Vos fautes': Math.round((i / intervals) * 7), // Progression vers 7 fautes
+                          'Fautes adversaire': Math.round((i / intervals) * 5), // Progression vers 5 fautes
+                        }));
+                      })()}
                       margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
