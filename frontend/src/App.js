@@ -1337,36 +1337,70 @@ const ResultsPage = ({ results }) => {
               </Card>
             </div>
 
-            {/* Statistiques des coups par point */}
-            <div className="grid lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Coups par Point - Statistiques</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="bg-emerald-50 rounded-lg p-4 text-center">
-                      <div className="text-3xl font-bold text-emerald-600 mb-2">4.2</div>
-                      <div className="text-sm text-emerald-700 mb-1">Coups en moyenne par point</div>
-                      <div className="text-xs text-gray-600">Dans les meilleurs échanges</div>
-                    </div>
-                    
-                    <div className="bg-yellow-50 rounded-lg p-4 text-center">
-                      <div className="text-3xl font-bold text-yellow-600 mb-2">12</div>
-                      <div className="text-sm text-yellow-700 mb-1">Coups maximum par point</div>
-                      <div className="text-xs text-gray-600">Le plus long échange du match</div>
-                    </div>
+            {/* Dynamique des rallies - Graphique temporel */}
+            <Card className="col-span-full">
+              <CardHeader>
+                <CardTitle>Dynamique des Meilleurs Rallies</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-80 mb-4">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                      data={[
+                        { rally: 'Rally 1', longueur: 6, intensité: 75, vous: 8, adversaire: 4 },
+                        { rally: 'Rally 2', longueur: 4, intensité: 60, vous: 6, adversaire: 3 },
+                        { rally: 'Rally 3', longueur: 12, intensité: 90, vous: 15, adversaire: 8 },
+                        { rally: 'Rally 4', longueur: 8, intensité: 80, vous: 10, adversaire: 6 },
+                        { rally: 'Rally 5', longueur: 5, intensité: 65, vous: 7, adversaire: 4 },
+                        { rally: 'Rally 6', longueur: 7, intensité: 85, vous: 9, adversaire: 5 },
+                        { rally: 'Rally 7', longueur: 9, intensité: 70, vous: 12, adversaire: 7 },
+                      ]}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="rally" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Line type="monotone" dataKey="longueur" stroke="#f59e0b" strokeWidth={3} name="Longueur (coups)" />
+                      <Line type="monotone" dataKey="intensité" stroke="#ef4444" strokeWidth={2} name="Intensité %" />
+                      <Line type="monotone" dataKey="vous" stroke="#10b981" strokeWidth={2} name="Vos points gagnés" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+                
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="bg-emerald-50 rounded-lg p-4 text-center">
+                    <div className="text-3xl font-bold text-emerald-600 mb-2">4.2</div>
+                    <div className="text-sm text-emerald-700 mb-1">Coups en moyenne par point</div>
+                    <div className="text-xs text-gray-600">Dans les meilleurs échanges</div>
                   </div>
                   
-                  <div className="mt-6 bg-gradient-to-r from-emerald-50 to-yellow-50 rounded-lg p-4">
-                    <h4 className="font-semibold text-gray-800 mb-2">📊 Analyse des Échanges</h4>
-                    <p className="text-sm text-gray-700">
-                      Vos meilleurs moments viennent des échanges de moyenne longueur (4-6 coups). 
-                      Vous savez accélérer au bon moment sans précipiter.
-                    </p>
+                  <div className="bg-yellow-50 rounded-lg p-4 text-center">
+                    <div className="text-3xl font-bold text-yellow-600 mb-2">12</div>
+                    <div className="text-sm text-yellow-700 mb-1">Coups maximum par point</div>
+                    <div className="text-xs text-gray-600">Le plus long échange du match</div>
                   </div>
-                </CardContent>
-              </Card>
+                  
+                  <div className="bg-purple-50 rounded-lg p-4 text-center">
+                    <div className="text-3xl font-bold text-purple-600 mb-2">85%</div>
+                    <div className="text-sm text-purple-700 mb-1">Taux de victoire</div>
+                    <div className="text-xs text-gray-600">Sur les meilleurs rallies</div>
+                  </div>
+                </div>
+                
+                <div className="mt-6 bg-gradient-to-r from-emerald-50 to-yellow-50 rounded-lg p-4">
+                  <h4 className="font-semibold text-gray-800 mb-2">📊 Analyse des Rallies Spectaculaires</h4>
+                  <p className="text-sm text-gray-700">
+                    Vos meilleurs moments viennent des échanges de moyenne longueur (4-6 coups). Vous dominez particulièrement 
+                    le rally 3 avec 12 coups et 90% d'intensité. Votre capacité à maintenir le niveau dans la durée est remarquable.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Statistiques des coups par point */}
+            <div className="grid lg:grid-cols-2 gap-6">
 
               <Card>
                 <CardHeader>
