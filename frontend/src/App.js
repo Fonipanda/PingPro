@@ -1027,56 +1027,84 @@ const ResultsPage = ({ results }) => {
               </CardContent>
             </Card>
 
-            {/* Statistiques des fautes */}
+            {/* Évolution des fautes au cours du match */}
             <Card>
               <CardHeader>
-                <CardTitle>Nombre de Fautes Totales vs Adversaire</CardTitle>
+                <CardTitle>Évolution des Fautes au Cours du Match</CardTitle>
               </CardHeader>
               <CardContent>
+                <div className="h-64 mb-6">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart
+                      data={[
+                        { temps: '0-5min', 'Vos fautes': 0, 'Fautes adversaire': 1 },
+                        { temps: '5-10min', 'Vos fautes': 2, 'Fautes adversaire': 1 },
+                        { temps: '10-15min', 'Vos fautes': 4, 'Fautes adversaire': 3 },
+                        { temps: '15-20min', 'Vos fautes': 6, 'Fautes adversaire': 4 },
+                        { temps: '20-25min', 'Vos fautes': 7, 'Fautes adversaire': 5 },
+                      ]}
+                      margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="temps" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Area type="monotone" dataKey="Vos fautes" stackId="1" stroke="#f97316" fill="#f97316" fillOpacity={0.6} />
+                      <Area type="monotone" dataKey="Fautes adversaire" stackId="2" stroke="#10b981" fill="#10b981" fillOpacity={0.6} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+                
                 <div className="grid lg:grid-cols-2 gap-6">
                   <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Comparatif des Fautes</h3>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Analyse par Type de Faute</h3>
                     
-                    <div className="space-y-4">
-                      <div className="bg-white rounded-lg p-4">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="font-semibold">Vos fautes totales</span>
-                          <span className="text-3xl font-bold text-orange-600">7</span>
-                        </div>
-                        <div className="w-full bg-orange-200 rounded-full h-3">
-                          <div className="bg-orange-500 h-3 rounded-full" style={{width: '58%'}}></div>
-                        </div>
-                        <span className="text-xs text-orange-700 mt-1">58% des fautes totales</span>
-                      </div>
-                      
-                      <div className="bg-white rounded-lg p-4">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="font-semibold">Fautes adversaire</span>
-                          <span className="text-3xl font-bold text-green-600">5</span>
-                        </div>
-                        <div className="w-full bg-green-200 rounded-full h-3">
-                          <div className="bg-green-500 h-3 rounded-full" style={{width: '42%'}}></div>
-                        </div>
-                        <span className="text-xs text-green-700 mt-1">42% des fautes totales</span>
-                      </div>
+                    <div className="h-40">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={[
+                              { name: 'Fautes directes', value: 3, fill: '#dc2626' },
+                              { name: 'Balles filet', value: 2, fill: '#f97316' },
+                              { name: 'Balles longues', value: 2, fill: '#fbbf24' },
+                            ]}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={30}
+                            outerRadius={60}
+                            dataKey="value"
+                            label={({ name, value }) => `${name}: ${value}`}
+                          >
+                          </Pie>
+                          <Tooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
                     </div>
                   </div>
                   
                   <div className="space-y-4">
                     <div className="bg-red-50 rounded-lg p-4">
-                      <h4 className="font-semibold text-red-800 mb-2">Types de fautes (Vous)</h4>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-sm">Fautes directes</span>
-                          <span className="font-bold">3</span>
+                      <h4 className="font-semibold text-red-800 mb-2">📊 Analyse Comparative</h4>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm">Vos fautes totales</span>
+                          <div className="flex items-center space-x-2">
+                            <div className="w-20 bg-orange-200 rounded-full h-2">
+                              <div className="bg-orange-500 h-2 rounded-full" style={{width: '58%'}}></div>
+                            </div>
+                            <span className="text-lg font-bold text-orange-600">7</span>
+                          </div>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm">Balles dans le filet</span>
-                          <span className="font-bold">2</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm">Balles longues</span>
-                          <span className="font-bold">2</span>
+                        
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm">Fautes adversaire</span>
+                          <div className="flex items-center space-x-2">
+                            <div className="w-20 bg-green-200 rounded-full h-2">
+                              <div className="bg-green-500 h-2 rounded-full" style={{width: '42%'}}></div>
+                            </div>
+                            <span className="text-lg font-bold text-green-600">5</span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1084,8 +1112,8 @@ const ResultsPage = ({ results }) => {
                     <div className="bg-orange-50 rounded-lg p-4">
                       <h4 className="font-semibold text-orange-800 mb-2">⚠️ Zone d'attention</h4>
                       <p className="text-sm text-orange-700">
-                        Vous faites légèrement plus de fautes que votre adversaire (7 vs 5). 
-                        L'amélioration de la régularité pourrait vous faire gagner des points précieux.
+                        Légère augmentation des fautes en milieu de match. Vous vous déstabilisez quand la pression monte. 
+                        Travaillez la gestion de stress pour maintenir votre niveau.
                       </p>
                     </div>
                   </div>
