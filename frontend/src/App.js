@@ -1416,10 +1416,10 @@ const ResultsPage = ({ results }) => {
               </Card>
             </div>
 
-            {/* Dynamique des rallies - Graphique temporel */}
+            {/* Dynamique des échanges - Graphique temporel */}
             <Card className="col-span-full">
               <CardHeader>
-                <CardTitle>Dynamique des Meilleurs Rallies</CardTitle>
+                <CardTitle>Dynamique des Meilleurs Échanges</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="h-80 mb-4">
