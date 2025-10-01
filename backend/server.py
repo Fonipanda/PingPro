@@ -1309,12 +1309,20 @@ async def process_video_analysis_with_tt3d(file_path: str, params: AnalysisReque
         
     except Exception as e:
         logger.error(f"Error in TT3D video analysis: {str(e)}")
-        analysis_status[analysis_id] = {
-            "status": "error", 
-            "stage": f"TT3D Error: {str(e)}", 
-            "progress": 0,
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        }
+        if analysis_id in analysis_status:
+            analysis_status[analysis_id].status = "failed"
+            analysis_status[analysis_id].current_step = f"TT3D Error: {str(e)}"
+            analysis_status[analysis_id].progress = 0.0
+            analysis_status[analysis_id].error_message = str(e)
+        else:
+            analysis_status[analysis_id] = AnalysisStatus(
+                analysis_id=analysis_id,
+                status="failed",
+                progress=0.0,
+                created_at=datetime.utcnow(),
+                current_step=f"TT3D Error: {str(e)}",
+                error_message=str(e)
+            )
 
 async def process_video_analysis(analysis_id: str, video_path: str, params: AnalysisRequest):
     """Background task for processing video analysis with TTNet + Video Processor integration"""
