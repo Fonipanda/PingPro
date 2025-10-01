@@ -433,105 +433,95 @@ def create_enhanced_fallback_analysis(ttnet_results: Dict[str, Any], params: Ana
     }
 
 async def generate_enhanced_coaching_recommendations(analysis_data: Dict[str, Any], params: AnalysisRequest, ttnet_results: Dict[str, Any]) -> List[str]:
-    """Generate enhanced coaching recommendations using both LLM and TTNet insights"""
-    recommendations = []
+    """Generate enhanced coaching recommendations using real TTNet analysis and LLM insights"""
     
-    # Get TTNet insights
+    # Get real analysis data from TTNet
     stats = ttnet_results.get("match_statistics", {})
     technical_insights = ttnet_results.get("technical_insights", {})
+    skill_assessment = technical_insights.get("skill_assessment", {})
+    match_characteristics = technical_insights.get("match_characteristics", {})
     
-    ball_detection_rate = stats.get("ball_detection_rate", 0)
-    events = stats.get("event_summary", {})
-    trajectory_analysis = stats.get("ball_trajectory_analysis", {})
+    # Use the personalized recommendations from TTNet analysis
+    ttnet_recommendations = technical_insights.get("technical_recommendations", [])
     
-    # Ball tracking quality recommendations
-    ball_quality = technical_insights.get("ball_tracking_quality", "Unknown")
-    if ball_quality in ["Poor", "Fair"]:
-        recommendations.append("🎥 Améliorer la qualité vidéo : éclairage optimal et caméra stable recommandés")
-        recommendations.append("📹 Positionner la caméra perpendiculaire à la table pour un meilleur suivi")
+    # Start with TTNet-generated recommendations (they are already personalized)
+    recommendations = list(ttnet_recommendations)
     
-    # Game flow based recommendations
-    game_flow = technical_insights.get("game_flow_assessment", "")
-    if "Long rallies" in game_flow:
-        recommendations.append("⚡ Développer des coups d'attaque pour raccourcir les échanges")
-        recommendations.append("🎯 Travailler le placement de balle pour créer des opportunités")
-    elif "Short rallies" in game_flow:
-        recommendations.append("🛡️ Améliorer la défense pour prolonger les échanges")
-        recommendations.append("⏱️ Travailler la patience tactique et la construction de points")
-    elif "Balanced" in game_flow:
-        recommendations.append("👍 Excellent équilibre attaque/défense - maintenir cette approche")
-    
-    # Event-based recommendations
-    bounces = events.get('ball_bounce', 0)
-    serves = events.get('serve', 0)
-    net_hits = events.get('net_hit', 0)
-    
-    if serves == 0:
-        recommendations.append("🏓 Inclure plus de services dans l'entraînement filmé")
-    elif serves > 0 and bounces > 0:
-        rally_ratio = bounces / serves
-        if rally_ratio < 2:
-            recommendations.append("🔄 Travailler la régularité pour allonger les échanges")
-        elif rally_ratio > 8:
-            recommendations.append("⚔️ Développer des coups gagnants pour conclure les points")
-    
-    if net_hits > 0:
-        recommendations.append("📐 Attention à la hauteur de balle - éviter les fautes au filet")
-    
-    # Trajectory-based recommendations
-    if trajectory_analysis:
-        avg_speed = trajectory_analysis.get('average_speed_pixels_per_frame', 0)
-        smoothness = trajectory_analysis.get('trajectory_smoothness', 0)
-        
-        if smoothness > 25:
-            recommendations.append("🎬 Stabiliser davantage la caméra pour une analyse précise")
-        
-        if avg_speed > 0:
-            if avg_speed < 10:
-                recommendations.append("💪 Augmenter la vitesse d'exécution des coups")
-            elif avg_speed > 50:
-                recommendations.append("🎯 Privilégier le contrôle à la puissance brute")
-    
-    # Technical analysis based recommendations
+    # Add LLM-based recommendations if available
     stroke_analysis = analysis_data.get("stroke_analysis", {})
     positioning_analysis = analysis_data.get("positioning_analysis", {})
     
+    # Enhance with LLM analysis insights
     if stroke_analysis:
-        technique_quality = stroke_analysis.get("technique_quality", "5")
-        if isinstance(technique_quality, str) and technique_quality.isdigit():
-            quality_score = int(technique_quality)
-            if quality_score < 6:
-                recommendations.append("🏓 Focus sur les fondamentaux : prise, stance, mouvement de base")
-            elif quality_score < 8:
-                recommendations.append("⭐ Peaufiner la technique avancée : effets et variations")
-            else:
-                recommendations.append("🏆 Niveau technique excellent - focus sur la tactique et mental")
+        strengths = stroke_analysis.get("strengths", [])
+        weaknesses = stroke_analysis.get("weaknesses", [])
+        
+        # Add specific technical recommendations based on LLM analysis
+        if weaknesses:
+            for weakness in weaknesses[:2]:  # Top 2 weaknesses
+                recommendations.append(f"🎯 Amélioration prioritaire : {weakness.lower()}")
+        
+        if strengths:
+            recommendations.append(f"💪 Continuer à exploiter : {strengths[0].lower()}")
     
-    # Level-specific recommendations
-    if params.skill_level == "debutant":
-        recommendations.append("📚 Bases techniques : se concentrer sur la régularité avant la vitesse")
-        recommendations.append("🎯 Objectif : 10 échanges consécutifs sans faute")
-    elif params.skill_level == "intermediaire":
-        recommendations.append("🔧 Perfectionner les variations : effets, placements, rythme")
-        recommendations.append("📈 Analyser les patterns de jeu adverses")
-    else:  # avance
-        recommendations.append("🧠 Optimisation tactique et préparation mentale")
-        recommendations.append("📊 Utiliser les statistiques pour adapter sa stratégie")
+    # Add tactical recommendations based on skill level and analysis
+    estimated_level = skill_assessment.get("estimated_level", params.skill_level)
     
-    # Add TTNet technical recommendations if available
-    ttnet_recommendations = technical_insights.get("technical_recommendations", [])
-    for rec in ttnet_recommendations:
-        recommendations.append(f"🤖 Analyse automatique : {rec}")
+    # Skill-level specific enhancements
+    if estimated_level == "beginner" and params.skill_level != "debutant":
+        recommendations.append("📈 Votre niveau analysé suggère de revoir les bases techniques")
+    elif estimated_level == "advanced" and params.skill_level == "debutant":
+        recommendations.append("🌟 Excellent ! Votre niveau semble plus avancé que déclaré")
     
-    # Limit and prioritize recommendations
-    if not recommendations:
-        recommendations = [
-            "🏓 Continuez l'entraînement régulier avec analyse vidéo",
-            "📹 Variez les angles de caméra pour une analyse complète",
-            "📊 Suivez vos progrès avec des métriques objectives"
+    # Match-specific tactical advice
+    avg_rally = match_characteristics.get("average_rally_length", 0)
+    if avg_rally > 0:
+        if avg_rally < 2.5:
+            recommendations.append("⚡ Échanges très courts - développer la patience tactique")
+        elif avg_rally > 6:
+            recommendations.append("🏁 Longs échanges - travailler les coups de finition")
+    
+    # Performance-based recommendations
+    technical_consistency = skill_assessment.get("technical_consistency", 70)
+    tactical_awareness = skill_assessment.get("tactical_awareness", 65)
+    
+    if technical_consistency > tactical_awareness + 15:
+        recommendations.append("🧠 Technique solide - focus sur l'aspect tactique")
+    elif tactical_awareness > technical_consistency + 15:
+        recommendations.append("🔧 Bonne vision du jeu - stabiliser la technique")
+    
+    # Add specific improvement areas based on real evidence
+    evidence_points = skill_assessment.get("evidence_points", [])
+    if evidence_points:
+        # Use the most relevant evidence point as recommendation
+        recommendations.append(f"📊 Constat d'analyse : {evidence_points[0].lower()}")
+    
+    # Quality-based recommendations for future sessions
+    video_quality = technical_insights.get("video_quality_metrics", {})
+    overall_quality = video_quality.get("overall_quality", "good")
+    
+    if overall_quality in ["poor", "fair"]:
+        recommendations.append("🎬 Améliorer le setup vidéo pour des analyses plus précises")
+    elif overall_quality == "excellent":
+        recommendations.append("✅ Configuration vidéo optimale - continuer ainsi")
+    
+    # Remove duplicates while preserving order
+    unique_recommendations = []
+    seen = set()
+    for rec in recommendations:
+        if rec not in seen:
+            unique_recommendations.append(rec)
+            seen.add(rec)
+    
+    # Ensure we have meaningful recommendations
+    if not unique_recommendations:
+        unique_recommendations = [
+            f"🏓 Continuez l'entraînement adapté à votre niveau {params.skill_level}",
+            "📹 Analyser régulièrement vos matchs pour suivre les progrès",
+            "📊 Les données d'analyse s'améliorent avec des vidéos de meilleure qualité"
         ]
     
-    return recommendations[:8]  # Limit to 8 most relevant recommendations
+    return unique_recommendations[:8]  # Limit to 8 most relevant recommendations
 async def analyze_frames_with_vision_enhanced_lexicon(frames_data: List[str], params: AnalysisRequest, ttnet_results: Dict[str, Any], video_processing_results: Dict[str, Any]) -> Dict[str, Any]:
     """Enhanced analysis combining LLM vision with TTNet insights and technical lexicon"""
     from emergentintegrations.llm.chat import LlmChat, UserMessage
