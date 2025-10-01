@@ -1815,13 +1815,54 @@ const ResultsPage = ({ results }) => {
   );
 };
 
+// Navigation Component
+const Navigation = () => {
+  const location = useLocation();
+  
+  return (
+    <nav className="bg-white shadow-sm border-b">
+      <div className="container mx-auto px-4">
+        <div className="flex items-center justify-between h-16">
+          <div className="flex items-center space-x-4">
+            <h1 className="text-xl font-bold text-gray-900">PingPro</h1>
+            <div className="hidden md:flex space-x-4">
+              <Link 
+                to="/"
+                className={`px-3 py-2 rounded-md text-sm font-medium ${
+                  location.pathname === '/' 
+                    ? 'bg-blue-100 text-blue-700' 
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Analyse Vidéo
+              </Link>
+              <Link 
+                to="/realtime"
+                className={`px-3 py-2 rounded-md text-sm font-medium ${
+                  location.pathname === '/realtime' 
+                    ? 'bg-blue-100 text-blue-700' 
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Temps Réel
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+  );
+};
+
 // Main App Component
 function App() {
   return (
     <Router>
-      <div className="App">
+      <div className="App min-h-screen bg-gray-50">
+        <Navigation />
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/realtime" element={<RealTimeAnalysis />} />
         </Routes>
       </div>
     </Router>
