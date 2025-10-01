@@ -1016,10 +1016,11 @@ async def process_video_analysis_with_tt3d(file_path: str, params: AnalysisReque
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
-        # Phase 1: TT3D Advanced Analysis
+        # Phase 1: TT3D Advanced Analysis (placeholder for future implementation)
         analysis_status[analysis_id].update({"stage": "TT3D camera calibration and 3D reconstruction", "progress": 15})
-        tt3d_analyzer = TT3DAdvancedAnalyzer()
-        tt3d_results = tt3d_analyzer.analyze_video(file_path)
+        # tt3d_analyzer = TT3DAdvancedAnalyzer()
+        # tt3d_results = tt3d_analyzer.analyze_video(file_path)
+        # For now, using existing TTNet analysis
         
         # Phase 2: TTNet Analysis (legacy support)
         analysis_status[analysis_id].update({"stage": "TTNet supplementary analysis", "progress": 30})
