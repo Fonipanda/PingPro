@@ -1223,7 +1223,7 @@ async def process_video_analysis_with_tt3d(file_path: str, params: AnalysisReque
         frames_data = await extract_video_frames(file_path, target_fps=1)
         
         analysis_status[analysis_id].update({"stage": "Analyzing with AI Vision + TT3D insights", "progress": 70})
-        llm_analysis = await analyze_frames_with_vision_tt3d_enhanced(frames_data, params, tt3d_results, ttnet_results, video_processing_results)
+        llm_analysis = await analyze_frames_with_vision_enhanced_lexicon(frames_data, params, ttnet_results, video_processing_results)
         
         # Phase 5: Generate TT3D-Enhanced Recommendations
         analysis_status[analysis_id].update({"stage": "Generating physics-based coaching recommendations", "progress": 80})
