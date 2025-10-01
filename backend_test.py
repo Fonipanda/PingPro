@@ -1304,11 +1304,13 @@ class PingProAPITester:
         print(f"   Tests Failed: {self.tests_run - self.tests_passed}")
         print(f"   Success Rate: {(self.tests_passed/self.tests_run*100):.1f}%")
         
-        # Detailed results for TTNet features
+        # Detailed results for TT3D and TTNet features
+        tt3d_tests = [result for result in self.test_results if 'TT3D' in result['test_name']]
         ttnet_tests = [result for result in self.test_results if 'TTNet' in result['test_name']]
         pipeline_tests = [result for result in self.test_results if 'Pipeline' in result['test_name']]
         
-        print(f"\n🔬 TTNet Analysis Tests: {len([t for t in ttnet_tests if t['success']])}/{len(ttnet_tests)} passed")
+        print(f"\n🚀 TT3D Advanced Analysis Tests: {len([t for t in tt3d_tests if t['success']])}/{len(tt3d_tests)} passed")
+        print(f"🔬 TTNet Analysis Tests: {len([t for t in ttnet_tests if t['success']])}/{len(ttnet_tests)} passed")
         print(f"🔄 Enhanced Pipeline Tests: {len([t for t in pipeline_tests if t['success']])}/{len(pipeline_tests)} passed")
         
         if self.tests_passed == self.tests_run:
