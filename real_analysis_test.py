@@ -479,32 +479,36 @@ class RealAnalysisValidator:
                 try:
                     hash1 = generate_video_hash(test_video)
                     hash2 = generate_video_hash(test_video)  # Should be same
-                
-                if hash1 == hash2 and len(hash1) > 0:
-                    self.log_test(
-                        "Real Analysis Functions - generate_video_hash",
-                        True,
-                        f"Video hash generated consistently: {hash1}"
-                    )
-                    hash_function_works = True
-                else:
+                    
+                    if hash1 == hash2 and len(hash1) > 0:
+                        self.log_test(
+                            "Real Analysis Functions - generate_video_hash",
+                            True,
+                            f"Video hash generated consistently: {hash1}"
+                        )
+                        hash_function_works = True
+                    else:
+                        self.log_test(
+                            "Real Analysis Functions - generate_video_hash",
+                            False,
+                            f"Hash inconsistent or empty: {hash1} vs {hash2}"
+                        )
+                        hash_function_works = False
+                        
+                except Exception as e:
                     self.log_test(
                         "Real Analysis Functions - generate_video_hash",
                         False,
-                        f"Hash inconsistent or empty: {hash1} vs {hash2}"
+                        f"Error in generate_video_hash: {str(e)}"
                     )
                     hash_function_works = False
-                    
-            except Exception as e:
+            else:
                 self.log_test(
                     "Real Analysis Functions - generate_video_hash",
                     False,
-                    f"Error in generate_video_hash: {str(e)}"
+                    "No test videos available"
                 )
                 hash_function_works = False
-            
-            # Cleanup
-            os.unlink(test_video)
             
             return real_method_exists and stats_function_works and hash_function_works
             
