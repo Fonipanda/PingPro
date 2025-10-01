@@ -95,3 +95,5 @@ frontend/node_modules/.cache/default-development/1.pack
 # Environment files
 *.env
 *.env.*
+backend/uploads/d800dd53-3eb9-49fd-8575-126606c01908.MP4
+backend/uploads/8e5b54b3-24f3-4da6-aa2e-e6124abab0cb.MP4
