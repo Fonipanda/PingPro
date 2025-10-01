@@ -22,7 +22,7 @@ from io import BytesIO
 from PIL import Image
 import json
 import tempfile
-import shutil
+import numpy as np
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
