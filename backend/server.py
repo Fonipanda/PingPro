@@ -99,7 +99,7 @@ class AnalysisResult(BaseModel):
     recommendations: List[str]
     highlights_timestamps: List[float]
     confidence_score: float
-    video_compilations: Optional[Dict[str, str]] = None  # Chemins des vidéos compilées
+    video_compilations: Optional[Dict[str, Optional[str]]] = None  # Chemins vidéos (None si échec)
     lexicon_analysis: Optional[Dict[str, Any]] = None  # Analyse avec lexique technique
 
 # OpenAI Integration Functions
