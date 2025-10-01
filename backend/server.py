@@ -1471,8 +1471,8 @@ async def upload_and_analyze_video(
         current_step="En attente..."
     )
     
-    # Start background processing
-    background_tasks.add_task(process_video_analysis, analysis_id, str(file_path), params)
+    # Start background analysis with TT3D
+    background_tasks.add_task(process_video_analysis_with_tt3d, str(file_path), params, analysis_id, background_tasks)
     
     return {
         "analysis_id": analysis_id,
