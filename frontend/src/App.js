@@ -1322,7 +1322,10 @@ const ResultsPage = ({ results }) => {
                   <p className="text-gray-700 mb-4">
                     Les échanges les plus spectaculaires du match • Points d'anthologie
                   </p>
-                  <Button className="bg-yellow-500 hover:bg-yellow-600">
+                  <Button 
+                    className="bg-yellow-500 hover:bg-yellow-600"
+                    onClick={() => handleVideoPlay('best_rallies')}
+                  >
                     <PlayCircle className="w-4 h-4 mr-2" />
                     Voir les meilleurs moments
                   </Button>
