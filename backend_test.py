@@ -445,6 +445,108 @@ class PingProAPITester:
             )
             return False
 
+    def test_tt3d_advanced_analysis_integration(self):
+        """Test TT3D Advanced Analysis integration and modules"""
+        print("\n🔬 Testing TT3D Advanced Analysis Integration...")
+        
+        # Test 1: TT3D Module Import
+        try:
+            import sys
+            sys.path.append('/app/backend')
+            
+            from tt3d_advanced_analysis import (
+                TT3DAdvancedAnalyzer, 
+                AdvancedAnalysisResult,
+                CameraCalibrator,
+                PhysicsBasedBallTracker,
+                TableSegmenter,
+                CameraParameters,
+                Ball3DTrajectory
+            )
+            
+            self.log_test(
+                "TT3D Module Import", 
+                True, 
+                "All TT3D advanced analysis classes successfully imported"
+            )
+            
+            # Test 2: TT3D Analyzer Initialization
+            analyzer = TT3DAdvancedAnalyzer()
+            if hasattr(analyzer, 'camera_calibrator') and hasattr(analyzer, 'ball_tracker'):
+                self.log_test(
+                    "TT3D Analyzer Initialization", 
+                    True, 
+                    "TT3D analyzer properly initialized with camera calibrator and ball tracker"
+                )
+            else:
+                self.log_test(
+                    "TT3D Analyzer Initialization", 
+                    False, 
+                    "TT3D analyzer missing required components"
+                )
+            
+            # Test 3: Camera Calibrator
+            calibrator = CameraCalibrator()
+            if hasattr(calibrator, 'segmenter') and hasattr(calibrator, 'table_width'):
+                self.log_test(
+                    "TT3D Camera Calibrator", 
+                    True, 
+                    f"Camera calibrator initialized with table dimensions: {calibrator.table_width}x{calibrator.table_height}m"
+                )
+            else:
+                self.log_test(
+                    "TT3D Camera Calibrator", 
+                    False, 
+                    "Camera calibrator missing required components"
+                )
+            
+            # Test 4: Physics-Based Ball Tracker
+            ball_tracker = PhysicsBasedBallTracker()
+            if hasattr(ball_tracker, 'gravity') and hasattr(ball_tracker, 'ball_mass'):
+                self.log_test(
+                    "TT3D Physics Ball Tracker", 
+                    True, 
+                    f"Physics tracker initialized with gravity={ball_tracker.gravity} m/s², ball_mass={ball_tracker.ball_mass} kg"
+                )
+            else:
+                self.log_test(
+                    "TT3D Physics Ball Tracker", 
+                    False, 
+                    "Physics ball tracker missing required physics parameters"
+                )
+            
+            # Test 5: Table Segmenter Neural Network
+            segmenter = TableSegmenter()
+            if hasattr(segmenter, 'encoder1') and hasattr(segmenter, 'decoder1'):
+                self.log_test(
+                    "TT3D Table Segmenter", 
+                    True, 
+                    "Neural network segmenter properly initialized with encoder-decoder architecture"
+                )
+            else:
+                self.log_test(
+                    "TT3D Table Segmenter", 
+                    False, 
+                    "Table segmenter neural network missing required layers"
+                )
+            
+            return True
+            
+        except ImportError as e:
+            self.log_test(
+                "TT3D Module Import", 
+                False, 
+                f"Failed to import TT3D module: {str(e)}"
+            )
+            return False
+        except Exception as e:
+            self.log_test(
+                "TT3D Advanced Analysis Integration", 
+                False, 
+                f"TT3D integration test failed: {str(e)}"
+            )
+            return False
+
     def test_ttnet_analysis_integration(self):
         """Test TTNet analysis integration and enhanced features"""
         print("\n🔬 Testing TTNet Analysis Integration...")
