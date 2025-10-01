@@ -1214,7 +1214,8 @@ async def process_video_analysis_with_tt3d(file_path: str, params: AnalysisReque
             )
         
         # Phase 1: TT3D Advanced Analysis (placeholder for future implementation)
-        analysis_status[analysis_id].update({"stage": "TT3D camera calibration and 3D reconstruction", "progress": 15})
+        analysis_status[analysis_id].current_step = "TT3D camera calibration and 3D reconstruction"
+        analysis_status[analysis_id].progress = 15.0
         # tt3d_analyzer = TT3DAdvancedAnalyzer()
         # tt3d_results = tt3d_analyzer.analyze_video(file_path)
         # For now, using existing TTNet analysis
