@@ -1211,7 +1211,7 @@ async def process_video_analysis_with_tt3d(file_path: str, params: AnalysisReque
         
         # Phase 2: TTNet Analysis (legacy support)
         analysis_status[analysis_id].update({"stage": "TTNet supplementary analysis", "progress": 30})
-        ttnet_results = analyze_video_with_ttn(file_path)
+        ttnet_results = analyze_video_with_ttnet(file_path)
         
         # Phase 3: Video Processing with Lexicon
         analysis_status[analysis_id].update({"stage": "Processing video timeline with lexicon", "progress": 45})
