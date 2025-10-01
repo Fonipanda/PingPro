@@ -1027,6 +1027,144 @@ class PingProAPITester:
                     f"Request failed: {str(e)}"
                 )
 
+    def test_tt3d_error_handling_robustness(self):
+        """Test TT3D error handling and robustness with invalid data"""
+        print("\n🛡️ Testing TT3D Error Handling & Robustness...")
+        
+        # Test 1: TT3D with corrupted video data
+        try:
+            # Create a corrupted video file
+            temp_file = tempfile.NamedTemporaryFile(suffix='.mp4', delete=False)
+            temp_file.write(b'corrupted_video_data_not_valid_mp4')
+            temp_file.write(b'0' * 1000)  # Add some dummy data
+            temp_file.close()
+            
+            with open(temp_file.name, 'rb') as f:
+                files = {'video': ('corrupted_tt3d_test.mp4', f, 'video/mp4')}
+                data = {
+                    'player_side': 'droite',
+                    'skill_level': 'intermediaire',
+                    'focus_areas': 'technique_coups,positionnement,timing'
+                }
+                
+                response = requests.post(
+                    f"{self.api_url}/analyze", 
+                    files=files, 
+                    data=data, 
+                    timeout=30
+                )
+                
+                # Should handle corrupted video gracefully
+                if response.status_code in [200, 400]:
+                    if response.status_code == 200:
+                        # If accepted, check if analysis handles corruption gracefully
+                        upload_data = response.json()
+                        analysis_id = upload_data.get('analysis_id')
+                        
+                        if analysis_id:
+                            time.sleep(3)
+                            status_response = requests.get(
+                                f"{self.api_url}/analysis/{analysis_id}/status", 
+                                timeout=10
+                            )
+                            
+                            if status_response.status_code == 200:
+                                status_data = status_response.json()
+                                status = status_data.get('status', '')
+                                
+                                # Should either complete with error or handle gracefully
+                                if status in ['error', 'completed', 'processing']:
+                                    self.log_test(
+                                        "TT3D Error Handling - Corrupted Video", 
+                                        True, 
+                                        f"Corrupted video handled gracefully: status={status}"
+                                    )
+                                else:
+                                    self.log_test(
+                                        "TT3D Error Handling - Corrupted Video", 
+                                        False, 
+                                        f"Unexpected status: {status}"
+                                    )
+                            else:
+                                self.log_test(
+                                    "TT3D Error Handling - Corrupted Video", 
+                                    True, 
+                                    "Corrupted video upload accepted, status check handled"
+                                )
+                        else:
+                            self.log_test(
+                                "TT3D Error Handling - Corrupted Video", 
+                                False, 
+                                "No analysis ID returned for corrupted video"
+                            )
+                    else:
+                        self.log_test(
+                            "TT3D Error Handling - Corrupted Video", 
+                            True, 
+                            f"Corrupted video properly rejected: {response.status_code}"
+                        )
+                else:
+                    self.log_test(
+                        "TT3D Error Handling - Corrupted Video", 
+                        False, 
+                        f"Unexpected response to corrupted video: {response.status_code}"
+                    )
+            
+            os.unlink(temp_file.name)
+            
+        except Exception as e:
+            self.log_test(
+                "TT3D Error Handling - Corrupted Video", 
+                False, 
+                f"TT3D error handling test failed: {str(e)}"
+            )
+        
+        # Test 2: TT3D with minimal video (edge case)
+        try:
+            # Create a very small video file
+            temp_file = tempfile.NamedTemporaryFile(suffix='.mp4', delete=False)
+            temp_file.write(b'\x20ftypmp42mp42isom')
+            temp_file.write(b'0' * 100)  # Very small file
+            temp_file.close()
+            
+            with open(temp_file.name, 'rb') as f:
+                files = {'video': ('minimal_tt3d_test.mp4', f, 'video/mp4')}
+                data = {
+                    'player_side': 'droite',
+                    'skill_level': 'intermediaire',
+                    'focus_areas': 'technique_coups,positionnement,timing'
+                }
+                
+                response = requests.post(
+                    f"{self.api_url}/analyze", 
+                    files=files, 
+                    data=data, 
+                    timeout=30
+                )
+                
+                # Should handle minimal video gracefully
+                if response.status_code in [200, 400]:
+                    self.log_test(
+                        "TT3D Error Handling - Minimal Video", 
+                        True, 
+                        f"Minimal video handled gracefully: {response.status_code}"
+                    )
+                else:
+                    self.log_test(
+                        "TT3D Error Handling - Minimal Video", 
+                        False, 
+                        f"Unexpected response to minimal video: {response.status_code}"
+                    )
+            
+            os.unlink(temp_file.name)
+            
+        except Exception as e:
+            self.log_test(
+                "TT3D Error Handling - Minimal Video", 
+                False, 
+                f"TT3D minimal video test failed: {str(e)}"
+            )
+
     def test_error_handling_improvements(self):
         """Test improved error handling in the enhanced system"""
         print("\n🛡️ Testing Enhanced Error Handling...")
