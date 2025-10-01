@@ -101,3 +101,8 @@ backend/uploads/a1b048ad-f3e6-4168-a538-d971018cb683.MP4
 backend/uploads/6604e60b-40a6-4441-8cf1-f0dbe15fe9e5.MP4
 frontend/node_modules/.cache/default-development/6.pack
 frontend/node_modules/.cache/default-development/7.pack
+-e 
+# Environment files
+*.env
+*.env.*
+backend/uploads/bf691ba0-5d1a-4cd8-9701-7db4d5f1871a.MP4
