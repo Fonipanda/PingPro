@@ -474,9 +474,11 @@ class RealAnalysisValidator:
                 stats_function_works = False
             
             # Test generate_video_hash function
-            try:
-                hash1 = generate_video_hash(test_video)
-                hash2 = generate_video_hash(test_video)  # Should be same
+            if test_videos:
+                test_video = test_videos[0]
+                try:
+                    hash1 = generate_video_hash(test_video)
+                    hash2 = generate_video_hash(test_video)  # Should be same
                 
                 if hash1 == hash2 and len(hash1) > 0:
                     self.log_test(
