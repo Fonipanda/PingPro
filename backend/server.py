@@ -898,30 +898,7 @@ def generate_highlights_from_video_processor(video_processing_results: Dict[str,
 
 # Duplicate function removed - using the first definition above
 
-def extract_movement_analysis_lexicon(ttnet_results: Dict[str, Any], video_processing_results: Dict[str, Any]) -> Dict[str, Any]:
-    """Extract movement analysis from TTNet results and lexicon processing"""
-    stats = ttnet_results.get("match_statistics", {})
-    trajectory_analysis = stats.get("ball_trajectory_analysis", {})
-    lexicon_analysis = video_processing_results.get("technical_analysis", {})
-    rally_segments = video_processing_results.get("rally_segments", [])
-    
-    movement_analysis = {
-        "ball_speed_analysis": {
-            "average_speed": trajectory_analysis.get("average_speed_pixels_per_frame", 0),
-            "max_speed": trajectory_analysis.get("max_speed_pixels_per_frame", 0),
-            "speed_consistency": trajectory_analysis.get("trajectory_smoothness", 0)
-        },
-        "lexicon_movement_terms": video_processing_results.get("technical_terms_detected", []),
-        "rally_movement_quality": {
-            "total_segments": len(rally_segments),
-            "average_segment_length": np.mean([seg.get('duration', 0) for seg in rally_segments]) if rally_segments else 0,
-            "movement_variety": len(set(video_processing_results.get("technical_terms_detected", [])))
-        },
-        "technical_vocabulary_detected": lexicon_analysis.get("stroke_statistics", {}).get("stroke_distribution", {}),
-        "tracking_confidence": stats.get("ball_detection_rate", 0)
-    }
-    
-    return movement_analysis
+# Duplicate function removed - using the first definition above
 
 def generate_highlights_from_video_processor(video_processing_results: Dict[str, Any], video_duration: float) -> List[float]:
     """Generate highlight timestamps from video processor rally segments"""
