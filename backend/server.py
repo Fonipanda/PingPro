@@ -1246,7 +1246,8 @@ async def process_video_analysis_with_tt3d(file_path: str, params: AnalysisReque
         enhanced_recommendations = await generate_lexicon_based_recommendations(llm_analysis, params, ttnet_results, video_processing_results)
         
         # Phase 6: Calculate TT3D Performance Metrics
-        analysis_status[analysis_id].update({"stage": "Calculating 3D performance metrics", "progress": 90})
+        analysis_status[analysis_id].current_step = "Calculating 3D performance metrics"
+        analysis_status[analysis_id].progress = 90.0
         performance_metrics = calculate_enhanced_performance_metrics_lexicon(llm_analysis, ttnet_results, video_processing_results)
         
         # Phase 7: Video Compilation with TT3D Insights
