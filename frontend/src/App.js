@@ -680,9 +680,35 @@ const ResultsPage = ({ results }) => {
             {/* Progression du score */}
             <Card>
               <CardHeader>
-                <CardTitle>Progression du Score Comparatif</CardTitle>
+                <CardTitle>Progression du Score au Cours du Match</CardTitle>
               </CardHeader>
               <CardContent>
+                <div className="h-64 mb-6">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                      data={[
+                        { temps: '0min', vous: 0, adversaire: 0 },
+                        { temps: '3min', vous: 2, adversaire: 1 },
+                        { temps: '6min', vous: 4, adversaire: 2 },
+                        { temps: '9min', vous: 6, adversaire: 4 },
+                        { temps: '12min', vous: 8, adversaire: 5 },
+                        { temps: '15min', vous: 9, adversaire: 6 },
+                        { temps: '18min', vous: 10, adversaire: 7 },
+                        { temps: '21min', vous: 11, adversaire: 8 },
+                      ]}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="temps" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Line type="monotone" dataKey="vous" stroke="#10b981" strokeWidth={3} name="Votre score" />
+                      <Line type="monotone" dataKey="adversaire" stroke="#ef4444" strokeWidth={3} name="Score adversaire" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+                
                 <div className="bg-gradient-to-r from-emerald-50 to-blue-50 rounded-lg p-6">
                   <div className="grid grid-cols-2 gap-8 mb-6">
                     <div className="text-center">
@@ -700,8 +726,8 @@ const ResultsPage = ({ results }) => {
                   <div className="bg-white rounded-lg p-4">
                     <h4 className="font-semibold text-gray-800 mb-2">📈 Évolution du Score</h4>
                     <p className="text-sm text-gray-600">
-                      Match bien maîtrisé ! Vous avez pris l'avantage dès le début et l'avez maintenu. 
-                      Votre régularité vous a permis de creuser l'écart progressivement jusqu'à la victoire 11-8.
+                      Match parfaitement maîtrisé ! Vous avez pris l'avantage dès le début (2-1) et l'avez maintenu tout au long. 
+                      La courbe montre une progression constante avec une accélération en fin de match pour sceller la victoire 11-8.
                     </p>
                   </div>
                 </div>
