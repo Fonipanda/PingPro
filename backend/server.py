@@ -1200,12 +1200,18 @@ async def process_video_analysis_with_tt3d(file_path: str, params: AnalysisReque
     """Advanced video analysis with TT3D integration for comprehensive 3D reconstruction"""
     try:
         # Update status
-        analysis_status[analysis_id] = {
-            "status": "processing", 
-            "stage": "Initializing TT3D advanced analysis", 
-            "progress": 5,
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        }
+        if analysis_id in analysis_status:
+            analysis_status[analysis_id].status = "processing"
+            analysis_status[analysis_id].progress = 5.0
+            analysis_status[analysis_id].current_step = "Initializing TT3D advanced analysis"
+        else:
+            analysis_status[analysis_id] = AnalysisStatus(
+                analysis_id=analysis_id,
+                status="processing",
+                progress=5.0,
+                created_at=datetime.utcnow(),
+                current_step="Initializing TT3D advanced analysis"
+            )
         
         # Phase 1: TT3D Advanced Analysis (placeholder for future implementation)
         analysis_status[analysis_id].update({"stage": "TT3D camera calibration and 3D reconstruction", "progress": 15})
