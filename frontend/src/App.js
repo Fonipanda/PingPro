@@ -750,7 +750,8 @@ const ResultsPage = ({ results }) => {
                   <div className="bg-white rounded-lg p-4">
                     <h4 className="font-semibold text-gray-800 mb-2">📈 Évolution du Score</h4>
                     <p className="text-sm text-gray-600">
-                      Match parfaitement maîtrisé ! Vous avez pris l'avantage dès le début (2-1) et l'avez maintenu tout au long. 
+                      Match de {Math.floor(results.video_info.duration_seconds / 60)} minutes parfaitement maîtrisé ! 
+                      Vous avez pris l'avantage dès le début et l'avez maintenu tout au long. 
                       La courbe montre une progression constante avec une accélération en fin de match pour sceller la victoire 11-8.
                     </p>
                   </div>
