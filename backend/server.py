@@ -1220,10 +1220,10 @@ async def process_video_analysis_with_tt3d(file_path: str, params: AnalysisReque
         # tt3d_results = tt3d_analyzer.analyze_video(file_path)
         # For now, using existing TTNet analysis
         
-        # Phase 2: TTNet Analysis (legacy support)
-        analysis_status[analysis_id].current_step = "TTNet supplementary analysis"
+        # Phase 2: TTNet Analysis with REAL analysis
+        analysis_status[analysis_id].current_step = "TTNet REAL video analysis"
         analysis_status[analysis_id].progress = 30.0
-        ttnet_results = analyze_video_with_ttnet(file_path)
+        ttnet_results = analyze_video_with_ttn(file_path)  # Using REAL analysis
         
         # Phase 3: Video Processing with Lexicon
         analysis_status[analysis_id].current_step = "Processing video timeline with lexicon"
