@@ -1601,6 +1601,213 @@ const ResultsPage = ({ results }) => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Nouvel onglet Impacts Balle */}
+          <TabsContent value="ball-impacts" className="space-y-8">
+            {/* Visualisation de la table avec impacts */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Target className="w-5 h-5 text-blue-500" />
+                  <span>Visualisation des Impacts de Balle</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {/* Filtres */}
+                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                  <h4 className="font-semibold text-gray-800 mb-4">Filtres d'affichage</h4>
+                  <div className="grid md:grid-cols-3 gap-4">
+                    {/* Filtre Type */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Type d'impacts</label>
+                      <select className="w-full p-2 border border-gray-300 rounded-md text-sm">
+                        <option value="all">Tous les impacts</option>
+                        <option value="service">Après service</option>
+                        <option value="rally">Durant l'échange</option>
+                        <option value="set">Durant le set</option>
+                      </select>
+                    </div>
+                    
+                    {/* Filtre Joueur */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Joueur</label>
+                      <select className="w-full p-2 border border-gray-300 rounded-md text-sm">
+                        <option value="both">Moi + Adversaire</option>
+                        <option value="me">Moi seulement</option>
+                        <option value="opponent">Adversaire seulement</option>
+                      </select>
+                    </div>
+                    
+                    {/* Filtre Échange */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Échange sélectionné</label>
+                      <select className="w-full p-2 border border-gray-300 rounded-md text-sm">
+                        <option value="all">Tous les échanges</option>
+                        <option value="1">1er échange</option>
+                        <option value="2">2ème échange</option>
+                        <option value="3">3ème échange</option>
+                        <option value="4">4ème échange</option>
+                        <option value="5">5ème échange</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Visualisation de la table */}
+                <div className="bg-white rounded-lg p-6 border-2 border-gray-200">
+                  <h4 className="font-semibold text-gray-800 mb-4 text-center">Table de Tennis de Table - Vue du dessus</h4>
+                  
+                  {/* SVG de la table */}
+                  <div className="flex justify-center">
+                    <svg width="400" height="200" viewBox="0 0 400 200" className="border border-gray-300 rounded">
+                      {/* Table */}
+                      <rect x="20" y="20" width="360" height="160" fill="#2d5016" stroke="#000" strokeWidth="2"/>
+                      
+                      {/* Ligne centrale */}
+                      <line x1="200" y1="20" x2="200" y2="180" stroke="#fff" strokeWidth="2"/>
+                      
+                      {/* Filet */}
+                      <line x1="20" y1="100" x2="380" y2="100" stroke="#000" strokeWidth="3"/>
+                      
+                      {/* Côtés de la table */}
+                      <text x="40" y="15" fontSize="12" fill="#000" fontWeight="bold">Adversaire</text>
+                      <text x="320" y="195" fontSize="12" fill="#000" fontWeight="bold">Vous</text>
+                      
+                      {/* Lignes de service (invisibles mais pour référence) */}
+                      <line x1="20" y1="60" x2="380" y2="60" stroke="#fff" strokeWidth="1" strokeDasharray="5,5" opacity="0.5"/>
+                      <line x1="20" y1="140" x2="380" y2="140" stroke="#fff" strokeWidth="1" strokeDasharray="5,5" opacity="0.5"/>
+                      
+                      {/* Impacts simulés - côté adversaire (cercles rouges) */}
+                      <circle cx="120" cy="50" r="4" fill="#ef4444" opacity="0.8"/>
+                      <circle cx="280" cy="70" r="4" fill="#ef4444" opacity="0.8"/>
+                      <circle cx="160" cy="45" r="4" fill="#ef4444" opacity="0.8"/>
+                      <circle cx="240" cy="55" r="4" fill="#ef4444" opacity="0.8"/>
+                      <circle cx="200" cy="65" r="4" fill="#ef4444" opacity="0.8"/>
+                      
+                      {/* Impacts simulés - votre côté (cercles bleus) */}
+                      <circle cx="100" cy="130" r="4" fill="#3b82f6" opacity="0.8"/>
+                      <circle cx="300" cy="150" r="4" fill="#3b82f6" opacity="0.8"/>
+                      <circle cx="180" cy="135" r="4" fill="#3b82f6" opacity="0.8"/>
+                      <circle cx="220" cy="155" r="4" fill="#3b82f6" opacity="0.8"/>
+                      <circle cx="260" cy="125" r="4" fill="#3b82f6" opacity="0.8"/>
+                      <circle cx="140" cy="145" r="4" fill="#3b82f6" opacity="0.8"/>
+                      
+                      {/* Services (triangles verts) */}
+                      <polygon points="90,160 100,170 80,170" fill="#10b981" opacity="0.8"/>
+                      <polygon points="310,30 320,40 300,40" fill="#10b981" opacity="0.8"/>
+                    </svg>
+                  </div>
+                  
+                  {/* Légende */}
+                  <div className="mt-6 flex justify-center space-x-8">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
+                      <span className="text-sm text-gray-700">Vos impacts</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-4 h-4 bg-red-500 rounded-full"></div>
+                      <span className="text-sm text-gray-700">Impacts adversaire</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-0 h-0 border-l-2 border-r-2 border-b-4 border-l-transparent border-r-transparent border-b-green-500"></div>
+                      <span className="text-sm text-gray-700">Services</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Statistiques des impacts */}
+                <div className="grid md:grid-cols-3 gap-6 mt-6">
+                  <Card className="bg-blue-50">
+                    <CardHeader>
+                      <CardTitle className="text-blue-800">Vos Impacts</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <span className="text-sm">Total impacts</span>
+                          <span className="font-bold text-blue-600">18</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm">Zone avant</span>
+                          <span className="font-bold">7 (39%)</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm">Zone arrière</span>
+                          <span className="font-bold">11 (61%)</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm">Côté coup droit</span>
+                          <span className="font-bold">10 (56%)</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm">Côté revers</span>
+                          <span className="font-bold">8 (44%)</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-red-50">
+                    <CardHeader>
+                      <CardTitle className="text-red-800">Impacts Adversaire</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <span className="text-sm">Total impacts</span>
+                          <span className="font-bold text-red-600">15</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm">Zone avant</span>
+                          <span className="font-bold">9 (60%)</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm">Zone arrière</span>
+                          <span className="font-bold">6 (40%)</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm">Côté coup droit</span>
+                          <span className="font-bold">8 (53%)</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm">Côté revers</span>
+                          <span className="font-bold">7 (47%)</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-green-50">
+                    <CardHeader>
+                      <CardTitle className="text-green-800">Analyse Tactique</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div>
+                          <div className="text-sm font-medium">Zone préférée</div>
+                          <div className="text-sm text-green-700">Coup droit arrière (28%)</div>
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium">Efficacité placement</div>
+                          <div className="text-sm text-green-700">Excellente (92%)</div>
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium">Variété</div>
+                          <div className="text-sm text-green-700">Bonne répartition</div>
+                        </div>
+                        <div className="bg-green-100 p-3 rounded-lg mt-4">
+                          <div className="text-xs font-medium text-green-800">💡 Conseil</div>
+                          <div className="text-xs text-green-700 mt-1">
+                            Exploitez davantage le côté revers adverse - zone moins couverte
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
     </div>
