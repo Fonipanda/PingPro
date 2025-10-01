@@ -85,3 +85,7 @@ backend/uploads/60247169-82b0-4850-ba03-456b435322d4.mov
 # Environment files
 *.env
 *.env.*
+-e 
+# Environment files
+*.env
+*.env.*
