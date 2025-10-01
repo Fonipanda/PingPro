@@ -1166,7 +1166,6 @@ def calculate_real_video_statistics(video_path: str, analysis_results: Dict, dur
     
     # Generate statistics that vary with video characteristics
     duration_factor = min(2.0, duration / 60.0)  # Normalize by 1 minute
-    complexity_factor = file_size / 10000000.0  # File size indicates complexity
     
     # Ball bounces vary with duration and detection quality
     ball_bounces = max(3, int(duration_factor * ball_detection_rate * np.random.uniform(8, 25)))
