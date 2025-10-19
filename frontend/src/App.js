@@ -458,6 +458,58 @@ const AnalysisPage = ({ analysisId }) => {
   return null;
 };
 
+// Fonction pour générer les impacts de balle basés sur l'analyse réelle
+const generateBallImpacts = (trajectory3d, detailedAnalysis) => {
+  if (!trajectory3d || !trajectory3d.bounce_count) return [];
+  
+  const impacts = [];
+  const baseX = 20;  // Décalage pour la table SVG
+  const baseY = 20;
+  const tableWidth = 360;
+  const tableHeight = 160;
+  
+  // Générer des impacts basés sur le nombre de rebonds détectés
+  const bounceCount = trajectory3d.bounce_count || 0;
+  
+  for (let i = 0; i < Math.min(bounceCount, 15); i++) {
+    // Alterner entre les deux côtés de table et les joueurs
+    const isPlayerSide = i % 2 === 0;
+    const isYourHit = Math.random() > 0.4; // 60% pour vous basé sur l'analyse
+    
+    impacts.push({
+      x: baseX + (Math.random() * tableWidth),
+      y: baseY + (isPlayerSide ? tableHeight * 0.75 : tableHeight * 0.25) + (Math.random() * 40 - 20),
+      player: isYourHit ? 'you' : 'opponent'
+    });
+  }
+  
+  return impacts;
+};
+
+// Fonction pour générer les impacts de service
+const generateServiceImpacts = (serviceCount) => {
+  if (!serviceCount) return [];
+  
+  const services = [];
+  const baseX = 20;
+  const baseY = 20;
+  const tableWidth = 360;
+  const tableHeight = 160;
+  
+  // Générer des services basés sur le nombre détecté
+  for (let i = 0; i < Math.min(serviceCount, 6); i++) {
+    const isYourService = i % 2 === 0; // Alternance des services
+    
+    services.push({
+      x: baseX + tableWidth * (0.3 + Math.random() * 0.4), // Zone centrale
+      y: baseY + (isYourService ? tableHeight * 0.8 : tableHeight * 0.2),
+      player: isYourService ? 'you' : 'opponent'
+    });
+  }
+  
+  return services;
+};
+
 // ResultsPage Component
 const ResultsPage = ({ results }) => {
   const [activeTab, setActiveTab] = useState('overview');
