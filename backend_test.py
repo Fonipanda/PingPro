@@ -2258,8 +2258,12 @@ class PingProAPITester:
     def run_all_tests(self):
         """Run all backend API tests including enhanced TTNet features and real-time analysis"""
         print("🏓 Starting Enhanced PingPro Backend API Tests")
-        print("🔬 Focus: TTNet Analysis Improvements, Enhanced Features & Real-Time Analysis")
+        print("🔬 Focus: 4 Specific Corrections + TTNet Analysis Improvements & Real-Time Analysis")
         print("=" * 80)
+        
+        # Test the 4 specific corrections first (PRIORITY)
+        print("\n🎯 4 SPECIFIC CORRECTIONS TESTING:")
+        self.test_4_specific_corrections()
         
         # Basic API Tests
         print("\n📡 Basic API Functionality Tests:")
@@ -2313,12 +2317,14 @@ class PingProAPITester:
         print(f"   Success Rate: {(self.tests_passed/self.tests_run*100):.1f}%")
         
         # Detailed results for different test categories
+        corrections_tests = [result for result in self.test_results if any(keyword in result['test_name'] for keyword in ['FFmpeg', 'compile_videos', 'table_tennis_scoring', 'Ball Impacts', 'WebSocket', 'Base64', 'cv2.VideoCapture'])]
         tt3d_tests = [result for result in self.test_results if 'TT3D' in result['test_name']]
         ttnet_tests = [result for result in self.test_results if 'TTNet' in result['test_name']]
         pipeline_tests = [result for result in self.test_results if 'Pipeline' in result['test_name']]
-        realtime_tests = [result for result in self.test_results if any(keyword in result['test_name'] for keyword in ['Real-Time', 'WebSocket', 'Stream', 'Match'])]
+        realtime_tests = [result for result in self.test_results if any(keyword in result['test_name'] for keyword in ['Real-Time', 'Stream', 'Match'])]
         
-        print(f"\n🚀 TT3D Advanced Analysis Tests: {len([t for t in tt3d_tests if t['success']])}/{len(tt3d_tests)} passed")
+        print(f"\n🎯 4 Specific Corrections Tests: {len([t for t in corrections_tests if t['success']])}/{len(corrections_tests)} passed")
+        print(f"🚀 TT3D Advanced Analysis Tests: {len([t for t in tt3d_tests if t['success']])}/{len(tt3d_tests)} passed")
         print(f"🔬 TTNet Analysis Tests: {len([t for t in ttnet_tests if t['success']])}/{len(ttnet_tests)} passed")
         print(f"🔄 Enhanced Pipeline Tests: {len([t for t in pipeline_tests if t['success']])}/{len(pipeline_tests)} passed")
         print(f"⚡ Real-Time Analysis Tests: {len([t for t in realtime_tests if t['success']])}/{len(realtime_tests)} passed")
