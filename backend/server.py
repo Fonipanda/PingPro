@@ -1410,7 +1410,12 @@ async def process_video_analysis_with_tt3d(file_path: str, params: AnalysisReque
         # Phase 7: Video Compilation with TT3D Insights
         analysis_status[analysis_id].current_step = "Compiling videos with 3D analysis"
         analysis_status[analysis_id].progress = 95.0
-        video_compilations = video_processing_results.get("compilations", {})
+        # Add video path to processing results for compilation
+        video_processing_results["video_path"] = file_path
+        
+        # Ensure compilation happens with real video analysis
+        logger.info(f"Starting video compilation for {analysis_id} with video: {file_path}")
+        video_compilations = compile_videos_with_real_analysis(video_processing_results, ttnet_results, analysis_id)
         
         # Get video info
         cap = cv2.VideoCapture(file_path)
