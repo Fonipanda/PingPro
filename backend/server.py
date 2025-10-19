@@ -1583,7 +1583,7 @@ async def process_video_analysis(analysis_id: str, video_path: str, params: Anal
             recommendations=recommendations,
             highlights_timestamps=highlights,
             confidence_score=calculate_enhanced_confidence_score(ttnet_results, analysis_data),
-            video_compilations=video_processing_results.get("compilations", {}),
+            video_compilations=video_compilations or {},
             lexicon_analysis=video_processing_results.get("technical_analysis", {})
         )
         
