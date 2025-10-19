@@ -67,7 +67,8 @@ const RealTimeAnalysis = () => {
       };
       
       ws.onerror = (error) => {
-        setError('WebSocket connection error');
+        setError('WebSocket connection error - Mode simulation disponible');
+        setConnected(false);
         console.error('WebSocket error:', error);
       };
       
