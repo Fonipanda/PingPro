@@ -1670,6 +1670,9 @@ async def process_video_analysis(analysis_id: str, video_path: str, params: Anal
         )
         
         # Store results with video compilations
+        # Apply table tennis scoring rules
+        table_tennis_rules = apply_table_tennis_scoring(ttnet_results)
+        
         result = AnalysisResult(
             analysis_id=analysis_id,
             video_info=video_info,
@@ -1679,7 +1682,8 @@ async def process_video_analysis(analysis_id: str, video_path: str, params: Anal
             highlights_timestamps=highlights,
             confidence_score=calculate_enhanced_confidence_score(ttnet_results, analysis_data),
             video_compilations=video_compilations or {},
-            lexicon_analysis=video_processing_results.get("technical_analysis", {})
+            lexicon_analysis=video_processing_results.get("technical_analysis", {}),
+            table_tennis_scoring=table_tennis_rules
         )
         
         analysis_results[analysis_id] = result
