@@ -104,6 +104,7 @@ class AnalysisResult(BaseModel):
     confidence_score: float
     video_compilations: Optional[Dict[str, Optional[str]]] = None  # Chemins vidéos (None si échec)
     lexicon_analysis: Optional[Dict[str, Any]] = None  # Analyse avec lexique technique
+    table_tennis_scoring: Optional[Dict[str, Any]] = None  # Règles et scoring tennis de table
 
 # OpenAI Integration Functions
 async def analyze_frames_with_vision(frames_data: List[str], params: AnalysisRequest) -> Dict[str, Any]:
