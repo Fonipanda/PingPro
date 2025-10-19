@@ -1731,8 +1731,7 @@ const ResultsPage = ({ results }) => {
                       <line x1="20" y1="140" x2="380" y2="140" stroke="#fff" strokeWidth="1" strokeDasharray="5,5" opacity="0.5"/>
                       
                       {/* Impacts réels basés sur l'analyse */}
-                      {results.tt3d_analysis?.ball_trajectory_3d && 
-                       generateBallImpacts(results.tt3d_analysis.ball_trajectory_3d, results.detailed_analysis).map((impact, idx) => (
+                      {generateBallImpacts(results).map((impact, idx) => (
                         <circle 
                           key={idx}
                           cx={impact.x} 
@@ -1744,8 +1743,7 @@ const ResultsPage = ({ results }) => {
                       ))}
                       
                       {/* Services réels */}
-                      {results.performance_metrics?.event_detection?.serve && 
-                       generateServiceImpacts(results.performance_metrics.event_detection.serve).map((service, idx) => (
+                      {generateServiceImpacts(results).map((service, idx) => (
                         <polygon 
                           key={idx}
                           points={`${service.x-5},${service.y+5} ${service.x+5},${service.y+5} ${service.x},${service.y-5}`}
