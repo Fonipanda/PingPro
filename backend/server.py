@@ -21,6 +21,7 @@ import cv2
 import base64
 import asyncio
 import numpy as np
+import subprocess
 from io import BytesIO
 from PIL import Image
 import json
