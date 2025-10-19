@@ -1331,6 +1331,8 @@ async def process_video_analysis_with_tt3d(file_path: str, params: AnalysisReque
         analysis_status[analysis_id].progress = 45.0
         video_processor = VideoProcessor()
         video_processing_results = await video_processor.process_video_complete(file_path)
+        # Add video path to processing results for compilation
+        video_processing_results["video_path"] = file_path
         
         # Phase 4: Enhanced LLM Analysis with TT3D Context
         analysis_status[analysis_id].current_step = "Extracting frames for AI analysis"
