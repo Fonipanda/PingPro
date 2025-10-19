@@ -1678,24 +1678,29 @@ const ResultsPage = ({ results }) => {
                       <line x1="20" y1="60" x2="380" y2="60" stroke="#fff" strokeWidth="1" strokeDasharray="5,5" opacity="0.5"/>
                       <line x1="20" y1="140" x2="380" y2="140" stroke="#fff" strokeWidth="1" strokeDasharray="5,5" opacity="0.5"/>
                       
-                      {/* Impacts simulés - côté adversaire (cercles rouges) */}
-                      <circle cx="120" cy="50" r="4" fill="#ef4444" opacity="0.8"/>
-                      <circle cx="280" cy="70" r="4" fill="#ef4444" opacity="0.8"/>
-                      <circle cx="160" cy="45" r="4" fill="#ef4444" opacity="0.8"/>
-                      <circle cx="240" cy="55" r="4" fill="#ef4444" opacity="0.8"/>
-                      <circle cx="200" cy="65" r="4" fill="#ef4444" opacity="0.8"/>
+                      {/* Impacts réels basés sur l'analyse */}
+                      {results.tt3d_analysis?.ball_trajectory_3d && 
+                       generateBallImpacts(results.tt3d_analysis.ball_trajectory_3d, results.detailed_analysis).map((impact, idx) => (
+                        <circle 
+                          key={idx}
+                          cx={impact.x} 
+                          cy={impact.y} 
+                          r="4" 
+                          fill={impact.player === 'you' ? '#3b82f6' : '#ef4444'} 
+                          opacity="0.8"
+                        />
+                      ))}
                       
-                      {/* Impacts simulés - votre côté (cercles bleus) */}
-                      <circle cx="100" cy="130" r="4" fill="#3b82f6" opacity="0.8"/>
-                      <circle cx="300" cy="150" r="4" fill="#3b82f6" opacity="0.8"/>
-                      <circle cx="180" cy="135" r="4" fill="#3b82f6" opacity="0.8"/>
-                      <circle cx="220" cy="155" r="4" fill="#3b82f6" opacity="0.8"/>
-                      <circle cx="260" cy="125" r="4" fill="#3b82f6" opacity="0.8"/>
-                      <circle cx="140" cy="145" r="4" fill="#3b82f6" opacity="0.8"/>
-                      
-                      {/* Services (triangles verts) */}
-                      <polygon points="90,160 100,170 80,170" fill="#10b981" opacity="0.8"/>
-                      <polygon points="310,30 320,40 300,40" fill="#10b981" opacity="0.8"/>
+                      {/* Services réels */}
+                      {results.performance_metrics?.event_detection?.serve && 
+                       generateServiceImpacts(results.performance_metrics.event_detection.serve).map((service, idx) => (
+                        <polygon 
+                          key={idx}
+                          points={`${service.x-5},${service.y+5} ${service.x+5},${service.y+5} ${service.x},${service.y-5}`}
+                          fill="#10b981" 
+                          opacity="0.8"
+                        />
+                      ))}
                     </svg>
                   </div>
                   
