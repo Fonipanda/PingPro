@@ -539,9 +539,24 @@ class RealTimeAnalyzer:
         current_time = time.time()
         game_duration = current_time - self.game_state.game_start_time if self.game_state.game_start_time else 0
         
-        # Rally statistics
+        # Score tracking avec règles tennis de table
         avg_rally_length = np.mean(self.game_state.rally_lengths) if self.game_state.rally_lengths else 0
         total_rallies = len(self.game_state.rally_lengths)
+        
+        # Vérifier fin de set (11 points avec 2 d'avance)
+        p1_score = self.game_state.player1_score
+        p2_score = self.game_state.player2_score
+        set_finished = False
+        set_winner = None
+        
+        if (p1_score >= 11 and p1_score - p2_score >= 2) or (p1_score >= 10 and p2_score >= 10 and abs(p1_score - p2_score) >= 2):
+            set_finished = True
+            set_winner = 1 if p1_score > p2_score else 2
+            
+        # Vérifier fin de match
+        sets_to_win = (self.game_state.match_format + 1) // 2  # 2 sets pour match 3, 3 sets pour match 5
+        match_finished = (self.game_state.player1_sets >= sets_to_win or 
+                         self.game_state.player2_sets >= sets_to_win)
         
         # Ball speed analysis
         speeds = []
