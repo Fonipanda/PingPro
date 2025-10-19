@@ -42,7 +42,11 @@ const RealTimeAnalysis = () => {
   // WebSocket connection
   const connectWebSocket = useCallback(() => {
     try {
-      const wsUrl = `${API.replace('http', 'ws')}/ws/realtime/client_${Date.now()}`;
+      // Fix WebSocket URL construction
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsHost = API.replace('http://', '').replace('https://', '');
+      const wsUrl = `${wsProtocol}//${wsHost}/ws/realtime/client_${Date.now()}`;
+      console.log('Connecting to WebSocket:', wsUrl);
       const ws = new WebSocket(wsUrl);
       
       ws.onopen = () => {
