@@ -112,3 +112,9 @@ frontend/node_modules/.cache/default-development/8.pack
 frontend/node_modules/.cache/default-development/9.pack
 backend/uploads/c3338a6d-e3d6-4ff7-a843-3f26849a6be4.MP4
 frontend/node_modules/.cache/default-development/14.pack
+-e 
+# Environment files
+*.env
+*.env.*
+backend/uploads/bd9be038-9f65-4cd4-8be8-6441cfbc0459.MP4
+backend/uploads/2d05a100-6dcc-4386-bcfd-48c54dc8355f.MP4
