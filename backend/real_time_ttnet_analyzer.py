@@ -58,9 +58,13 @@ class EventDetection:
 @dataclass
 class GameState:
     """Current game state and statistics"""
-    # Score tracking
+    # Score tracking (tennis de table: 11 points, 2 points d'avance)
     player1_score: int = 0
     player2_score: int = 0
+    player1_sets: int = 0
+    player2_sets: int = 0
+    current_set: int = 1
+    match_format: int = 3  # Premier à 2 sets (ou 5 sets = premier à 3)
     
     # Rally tracking
     current_rally_length: int = 0
