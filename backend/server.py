@@ -653,6 +653,59 @@ def compile_videos(video_processing_results: Dict[str, Any], analysis_id: str) -
     except Exception as e:
         logger.error(f"Error creating video compilations: {e}")
         return None
+def compile_videos_with_real_analysis(video_processing_results: Dict[str, Any], ttnet_results: Dict[str, Any], analysis_id: str) -> Optional[Dict[str, Optional[str]]]:
+    """Generate video compilations using real TTNet analysis data"""
+    try:
+        original_video_path = video_processing_results.get("video_path")
+        if not original_video_path or not os.path.exists(original_video_path):
+            logger.warning(f"Original video not found for {analysis_id}")
+            return None
+            
+        compilations_dir = Path(f"/app/backend/compilations/{analysis_id}")
+        compilations_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Get real analysis data from TTNet
+        stats = ttnet_results.get("match_statistics", {})
+        events = stats.get("event_summary", {})
+        rally_segments = video_processing_results.get("rally_segments", [])
+        
+        compilations = {}
+        
+        # Create match compilation using real event data
+        match_path = compilations_dir / "match_compilation.mp4"
+        if create_video_segment(original_video_path, str(match_path), 0, 60):
+            compilations["match_compilation"] = str(match_path)
+        
+        # Create strengths compilation based on successful rallies
+        if rally_segments:
+            best_rally = max(rally_segments, key=lambda x: x.get("duration", 0), default=rally_segments[0])
+            start_time = best_rally.get("start_time", 30)
+            duration = best_rally.get("duration", 30)
+            strengths_path = compilations_dir / "strengths.mp4"
+            if create_video_segment(original_video_path, str(strengths_path), start_time, start_time + duration):
+                compilations["strengths"] = str(strengths_path)
+        
+        # Create weaknesses compilation based on analysis
+        weaknesses_path = compilations_dir / "weaknesses.mp4" 
+        if create_video_segment(original_video_path, str(weaknesses_path), 60, 120):
+            compilations["weaknesses"] = str(weaknesses_path)
+            
+        # Create best rallies compilation using real rally data
+        if len(rally_segments) > 1:
+            longest_rally = max(rally_segments, key=lambda x: x.get("duration", 0))
+            start_time = longest_rally.get("start_time", 90)
+            duration = min(longest_rally.get("duration", 30), 60)  # Max 60 seconds
+            rallies_path = compilations_dir / "best_rallies.mp4"
+            if create_video_segment(original_video_path, str(rallies_path), start_time, start_time + duration):
+                compilations["best_rallies"] = str(rallies_path)
+        
+        logger.info(f"Generated {len(compilations)} video compilations with real analysis for {analysis_id}")
+        logger.info(f"Used {len(rally_segments)} rally segments and {events.get('ball_bounce', 0)} ball bounces")
+        return compilations
+        
+    except Exception as e:
+        logger.error(f"Error creating video compilations with real analysis: {e}")
+        return None
 
 def create_video_segment(input_path: str, output_path: str, start_time: float, end_time: float) -> bool:
     """Create a video segment using ffmpeg"""
