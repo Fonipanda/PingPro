@@ -1646,6 +1646,25 @@ async def get_compilation_video(analysis_id: str, video_type: str):
         filename=f"{video_type}_{analysis_id}.mp4"
     )
 
+# Video serving endpoint
+@api_router.get("/videos/{video_filename}")
+async def serve_video_file(video_filename: str):
+    """Serve compiled video files directly"""
+    # Look for the video file in compilations directory
+    compilations_dir = Path("/app/backend/compilations")
+    
+    # Search for the file in all analysis subdirectories
+    for analysis_dir in compilations_dir.glob("*/"):
+        video_path = analysis_dir / video_filename
+        if video_path.exists():
+            return FileResponse(
+                str(video_path),
+                media_type="video/mp4",
+                filename=video_filename
+            )
+    
+    raise HTTPException(status_code=404, detail="Fichier vidéo introuvable")
+
 # Real-time analysis endpoints
 @app.websocket("/ws/realtime/{client_id}")
 async def websocket_realtime(websocket: WebSocket, client_id: str):
