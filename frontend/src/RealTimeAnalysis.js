@@ -325,7 +325,7 @@ const RealTimeAnalysis = () => {
             <div className="space-y-2">
               <Button 
                 onClick={startAnalysis}
-                disabled={!connected || analyzing}
+                disabled={analyzing}
                 className="w-full"
               >
                 <Play className="w-4 h-4 mr-2" />
