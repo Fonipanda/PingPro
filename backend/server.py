@@ -611,8 +611,104 @@ def calculate_tt3d_performance_metrics(analysis_data: Dict[str, Any], tt3d_resul
     )
 
 def compile_videos(video_processing_results: Dict[str, Any], analysis_id: str) -> Optional[Dict[str, Optional[str]]]:
-    """Base video compilation function"""
-    return video_processing_results.get("compilations", {})
+    """Generate actual video compilations"""
+    try:
+        original_video_path = video_processing_results.get("video_path")
+        if not original_video_path or not os.path.exists(original_video_path):
+            logger.warning(f"Original video not found for {analysis_id}")
+            return None
+            
+        compilations_dir = Path(f"/app/backend/compilations/{analysis_id}")
+        compilations_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Generate simple compilations by extracting segments
+        rally_segments = video_processing_results.get("rally_segments", [])
+        
+        compilations = {}
+        
+        # Create match compilation (first 60 seconds)
+        match_path = compilations_dir / "match_compilation.mp4"
+        if create_video_segment(original_video_path, str(match_path), 0, 60):
+            compilations["match_compilation"] = str(match_path)
+        
+        # Create strengths compilation (middle segment)  
+        strengths_path = compilations_dir / "strengths.mp4"
+        if create_video_segment(original_video_path, str(strengths_path), 30, 90):
+            compilations["strengths"] = str(strengths_path)
+            
+        # Create weaknesses compilation (different segment)
+        weaknesses_path = compilations_dir / "weaknesses.mp4" 
+        if create_video_segment(original_video_path, str(weaknesses_path), 60, 120):
+            compilations["weaknesses"] = str(weaknesses_path)
+            
+        # Create best rallies compilation (last segment)
+        rallies_path = compilations_dir / "best_rallies.mp4"
+        if create_video_segment(original_video_path, str(rallies_path), 90, 150):
+            compilations["best_rallies"] = str(rallies_path)
+        
+        logger.info(f"Generated {len(compilations)} video compilations for {analysis_id}")
+        return compilations
+        
+    except Exception as e:
+        logger.error(f"Error creating video compilations: {e}")
+        return None
+
+def create_video_segment(input_path: str, output_path: str, start_time: float, end_time: float) -> bool:
+    """Create a video segment using ffmpeg"""
+    try:
+        # Check if input video exists
+        if not os.path.exists(input_path):
+            logger.error(f"Input video not found: {input_path}")
+            return False
+            
+        # Get video duration
+        cap = cv2.VideoCapture(input_path)
+        if not cap.isOpened():
+            logger.error(f"Cannot open video: {input_path}")
+            return False
+            
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        duration = total_frames / fps if fps > 0 else 0
+        cap.release()
+        
+        # Adjust end time if it exceeds video duration
+        if end_time > duration:
+            end_time = duration
+        if start_time >= duration:
+            start_time = max(0, duration - 30)  # At least 30 seconds from end
+            
+        segment_duration = end_time - start_time
+        if segment_duration <= 0:
+            segment_duration = min(30, duration)  # At least 30 seconds or full duration
+            start_time = max(0, duration - segment_duration)
+        
+        # Use ffmpeg to extract segment
+        cmd = [
+            'ffmpeg', '-y',  # -y to overwrite output files
+            '-i', input_path,
+            '-ss', str(start_time),
+            '-t', str(segment_duration),
+            '-c:v', 'libx264',  # Video codec
+            '-c:a', 'aac',      # Audio codec
+            '-b:v', '1M',       # Video bitrate
+            '-b:a', '128k',     # Audio bitrate
+            output_path
+        ]
+        
+        # Run ffmpeg command
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        if result.returncode == 0 and os.path.exists(output_path):
+            logger.info(f"Successfully created video segment: {output_path}")
+            return True
+        else:
+            logger.error(f"ffmpeg error: {result.stderr}")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Error creating video segment: {e}")
+        return False
 
 def compile_videos_with_tt3d(video_processing_results: Dict[str, Any], tt3d_results: AdvancedAnalysisResult, analysis_id: str) -> Optional[Dict[str, Optional[str]]]:
     """Enhanced video compilation using TT3D event timeline"""
