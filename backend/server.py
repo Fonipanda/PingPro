@@ -1562,6 +1562,9 @@ async def process_video_analysis(analysis_id: str, video_path: str, params: Anal
         analysis_status[analysis_id].progress = 90.0
         analysis_status[analysis_id].current_step = "Finalisation des compilations..."
         
+        # Generate real video compilations
+        video_compilations = compile_videos_with_real_analysis(video_processing_results, ttnet_results, analysis_id)
+        
         # Create enhanced technical analysis with lexicon
         technical_analysis = TechnicalAnalysis(
             stroke_analysis=analysis_data.get("stroke_analysis", {}),
