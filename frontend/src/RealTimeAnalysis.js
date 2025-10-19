@@ -74,7 +74,8 @@ const RealTimeAnalysis = () => {
       
       setSocket(ws);
     } catch (err) {
-      setError('Failed to connect to analysis server');
+      setError('Failed to connect to analysis server - Mode simulation disponible');
+      setConnected(false);
     }
   }, [API]);
   
