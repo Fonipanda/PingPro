@@ -1449,6 +1449,8 @@ async def process_video_analysis(analysis_id: str, video_path: str, params: Anal
         
         # Step 2: Advanced Video Processing with Lexicon
         video_processing_results = await video_processor.process_video_complete(video_path)
+        # Add video path to processing results for compilation
+        video_processing_results["video_path"] = video_path
         
         analysis_status[analysis_id].progress = 50.0
         analysis_status[analysis_id].current_step = "Génération des compilations vidéo..."
