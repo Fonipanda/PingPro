@@ -1714,6 +1714,77 @@ const ResultsPage = ({ results }) => {
                   </div>
                 </div>
 
+                {/* Graphique de progression du score */}
+                <div className="bg-white rounded-lg p-6 border-2 border-gray-200 mb-6">
+                  <h4 className="font-semibold text-gray-800 mb-4 text-center">Progression du Score</h4>
+                  
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart
+                        data={results.table_tennis_scoring?.score_progression || 
+                        // Données par défaut si pas de scoring
+                        Array.from({length: 19}, (_, i) => ({
+                          point: i + 1,
+                          player1: Math.min(11, Math.floor((i + 1) * 0.6)),
+                          player2: Math.min(11, Math.floor((i + 1) * 0.4))
+                        }))}
+                        margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey="point" 
+                          label={{ value: 'Points joués', position: 'insideBottom', offset: -10 }}
+                        />
+                        <YAxis 
+                          domain={[0, 12]}
+                          label={{ value: 'Score', angle: -90, position: 'insideLeft' }}
+                        />
+                        <Tooltip 
+                          formatter={(value, name) => [value, name === 'player1' ? 'Vous' : 'Adversaire']}
+                          labelFormatter={(label) => `Point ${label}`}
+                        />
+                        <Legend />
+                        <Line 
+                          type="monotone" 
+                          dataKey="player1" 
+                          stroke="#3b82f6" 
+                          strokeWidth={3}
+                          dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                          name="Vous"
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="player2" 
+                          stroke="#f87171" 
+                          strokeWidth={3}
+                          dot={{ fill: '#f87171', strokeWidth: 2, r: 4 }}
+                          name="Adversaire"
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  {/* Résultat final */}
+                  <div className="mt-4 text-center">
+                    <div className="inline-flex items-center space-x-4 bg-gray-50 px-6 py-3 rounded-lg">
+                      <div className="text-2xl font-bold text-blue-600">
+                        {results.table_tennis_scoring?.final_score?.player1 || 11}
+                      </div>
+                      <span className="text-gray-500">-</span>
+                      <div className="text-2xl font-bold text-red-500">
+                        {results.table_tennis_scoring?.final_score?.player2 || 8}
+                      </div>
+                      <div className="ml-4">
+                        <Badge variant={
+                          (results.table_tennis_scoring?.final_score?.winner === 'player1') ? 'default' : 'destructive'
+                        }>
+                          {(results.table_tennis_scoring?.final_score?.winner === 'player1') ? 'Victoire' : 'Défaite'}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Visualisation de la table */}
                 <div className="bg-white rounded-lg p-6 border-2 border-gray-200">
                   <h4 className="font-semibold text-gray-800 mb-4 text-center">Table de Tennis de Table - Vue du dessus</h4>
