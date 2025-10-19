@@ -583,6 +583,13 @@ class RealTimeAnalyzer:
                 'player1': self.game_state.player1_score,
                 'player2': self.game_state.player2_score
             },
+            'sets': {
+                'player1_sets': self.game_state.player1_sets,
+                'player2_sets': self.game_state.player2_sets,
+                'current_set': self.game_state.current_set,
+                'set_finished': set_finished,
+                'match_finished': match_finished
+            },
             'current_rally': {
                 'length': self.game_state.current_rally_length,
                 'duration': current_time - self.game_state.rally_start_time if self.game_state.rally_start_time else 0
