@@ -1650,7 +1650,67 @@ async def get_compilation_video(analysis_id: str, video_type: str):
 @app.websocket("/ws/realtime/{client_id}")
 async def websocket_realtime(websocket: WebSocket, client_id: str):
     """WebSocket endpoint for real-time table tennis analysis"""
-    await websocket_endpoint(websocket, client_id)
+    try:
+        await websocket.accept()
+        logger.info(f"WebSocket connection accepted for client: {client_id}")
+        
+        # Send initial connection message
+        await websocket.send_text(json.dumps({
+            "type": "status",
+            "message": "Connecté au serveur d'analyse temps réel",
+            "client_id": client_id
+        }))
+        
+        while True:
+            try:
+                # Wait for messages from client
+                data = await websocket.receive_text()
+                message = json.loads(data)
+                logger.info(f"Received message from {client_id}: {message}")
+                
+                # Handle different message types
+                if message.get("type") == "start_analysis":
+                    await websocket.send_text(json.dumps({
+                        "type": "analysis_status",
+                        "status": "started", 
+                        "message": "Analyse temps réel démarrée (simulation)"
+                    }))
+                    
+                    # Send mock video frames for testing
+                    import asyncio
+                    for i in range(10):
+                        await asyncio.sleep(1)
+                        await websocket.send_text(json.dumps({
+                            "type": "frame_analysis",
+                            "frame_id": i,
+                            "frame_data": None,  # Will be replaced with real video data
+                            "analysis": {
+                                "ball": {"x": 100 + i*10, "y": 100 + i*5, "confidence": 0.8},
+                                "events": [],
+                                "statistics": {
+                                    "game_duration": i * 1.0,
+                                    "score": {"player1": 0, "player2": 0},
+                                    "current_rally": {"length": 0, "duration": 0},
+                                    "detection_quality": {"ball_detection_rate": 0.8, "avg_confidence": 0.75}
+                                }
+                            }
+                        }))
+                        
+                elif message.get("type") == "stop_analysis":
+                    await websocket.send_text(json.dumps({
+                        "type": "analysis_status", 
+                        "status": "stopped",
+                        "message": "Analyse arrêtée"
+                    }))
+                    
+            except Exception as e:
+                logger.error(f"Error handling WebSocket message: {e}")
+                break
+                
+    except Exception as e:
+        logger.error(f"WebSocket connection error: {e}")
+    finally:
+        logger.info(f"WebSocket connection closed for client: {client_id}")
 
 @app.get("/api/video-stream")
 async def video_stream():
