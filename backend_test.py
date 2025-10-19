@@ -1988,7 +1988,7 @@ class PingProAPITester:
             from server import AnalysisResult
             
             # Check if AnalysisResult model has table_tennis_scoring field
-            model_fields = AnalysisResult.__fields__ if hasattr(AnalysisResult, '__fields__') else {}
+            model_fields = AnalysisResult.model_fields if hasattr(AnalysisResult, 'model_fields') else (AnalysisResult.__fields__ if hasattr(AnalysisResult, '__fields__') else {})
             
             if 'table_tennis_scoring' in model_fields:
                 self.log_test(
