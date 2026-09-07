@@ -57,7 +57,42 @@ class VideoSegment:
     metadata: Dict[str, Any]
 
 class TableTennisLexicon:
-    """Lexique technique standardisé du tennis de table"""
+    """
+    Lexique technique standardisé du tennis de table
+    Conforme aux règles FFTT 2025 (règlement sportif en vigueur au 1er juillet 2025)
+    """
+    
+    TABLE_SPECS = {
+        'longueur_m': 2.74,       # Règle 2.1.1
+        'largeur_m': 1.525,       # Règle 2.1.1
+        'hauteur_m': 0.76,        # Règle 2.1.1
+        'filet_hauteur_cm': 15.25, # Règle 2.2.2
+        'bande_largeur_cm': 2.0,  # Règle 2.1.4
+        'ligne_centrale_mm': 3.0   # Règle 2.1.6 (doubles)
+    }
+    
+    BALL_SPECS = {
+        'diametre_mm': 40,        # Règle 2.3.1
+        'poids_g': 2.7,           # Règle 2.3.2
+        'materiau': 'plastique',  # Règle 2.3.3
+        'couleurs': ['blanc', 'orange']  # Règle 2.3.3
+    }
+    
+    SERVICE_RULES = {
+        'hauteur_lancer_min_cm': 16,  # Règle 2.6.2 - Minimum 16cm
+        'lancer_vertical': True,       # Règle 2.6.2 - Sans effet
+        'main_ouverte': True,          # Règle 2.6.1 - Paume ouverte
+        'derriere_ligne': True,        # Règle 2.6.4 - Derrière ligne de fond
+        'visible_adversaire': True     # Règle 2.6.4 - Non cachée
+    }
+    
+    SCORING_RULES = {
+        'points_manche': 11,           # Règle 2.11.1
+        'ecart_minimum': 2,            # Règle 2.11.1
+        'alternance_service': 2,       # Règle 2.13.3 - Tous les 2 points
+        'alternance_deuce': 1,         # Règle 2.13.3 - 1 point si 10-10
+        'formats_match': [3, 5, 7]     # Règle 2.12.1 - Nombre impair de manches
+    }
     
     STROKE_TYPES = {
         'coup_droit': 'Coup droit (CD / Forehand)',
@@ -82,18 +117,20 @@ class TableTennisLexicon:
     SERVICE_TYPES = {
         'service_cd': 'Service coup droit',
         'service_rv': 'Service revers',
-        'service_marteau': 'Service marteau',
+        'service_marteau': 'Service marteau (Tomahawk)',
+        'service_pendulaire': 'Service pendulaire',
         'service_rentrant': 'Service rentrant',
         'service_sortant': 'Service sortant',
         'service_pioche': 'Service pioche',
         'service_coupe': 'Service coupé',
         'service_lifte': 'Service lifté',
         'service_lateral': 'Service latéral',
-        'service_bombe': 'Service bombe',
-        'service_court': 'Service court',
-        'service_long': 'Service long',
-        'service_gagnant': 'Service gagnant',
-        'faute_service': 'Faute au service'
+        'service_bombe': 'Service bombe (fast long)',
+        'service_court': 'Service court (2ème rebond sur table)',
+        'service_long': 'Service long (vers fond de table)',
+        'service_fantome': 'Service fantôme (sans effet apparent)',
+        'service_gagnant': 'Service gagnant (ace)',
+        'faute_service': 'Faute au service (règle 2.10.1.1)'
     }
     
     RETURN_TYPES = {
@@ -110,8 +147,14 @@ class TableTennisLexicon:
     FAULT_TYPES = {
         'faute_directe_cd': 'Faute directe coup droit',
         'faute_directe_rv': 'Faute directe revers',
-        'faute_service': 'Faute au service',
-        'faute_remise': 'Faute en remise',
+        'faute_service': 'Faute au service (règle 2.10.1.1)',
+        'faute_remise': 'Faute en remise (règle 2.10.1.2)',
+        'faute_filet': 'Balle au filet (règle 2.10.1.5)',
+        'faute_dehors': 'Balle dehors (règle 2.10.1.4)',
+        'obstruction': 'Obstruction (règle 2.10.1.6)',
+        'double_frappe': 'Double frappe (règle 2.10.1.7)',
+        'touche_filet': 'Touche filet en jeu (règle 2.10.1.10)',
+        'main_libre_table': 'Main libre sur table (règle 2.10.1.11)',
         'topspin_dehors': 'Topspin dehors',
         'topspin_filet': 'Topspin filet',
         'bloc_dehors': 'Bloc dehors',
@@ -120,6 +163,20 @@ class TableTennisLexicon:
         'poussette_filet': 'Poussette filet',
         'remise_haute': 'Remise trop haute → punie',
         'mauvais_placement': 'Mauvais placement de balle'
+    }
+    
+    LET_SITUATIONS = {
+        'let_service_filet': 'Balle à remettre - Service touche filet (règle 2.9.1.1)',
+        'let_non_pret': 'Balle à remettre - Receveur pas prêt (règle 2.9.1.2)',
+        'let_incident': 'Balle à remettre - Incident externe (règle 2.9.1.3)',
+        'let_arbitre': 'Balle à remettre - Arrêt arbitre (règle 2.9.1.4)'
+    }
+    
+    ACCELERATION_RULE = {
+        'duree_minutes': 10,       # Règle 2.15.1
+        'points_minimum': 18,      # Règle 2.15.2 - Pas d'accélération si >= 18 pts
+        'renvois_max': 13,         # Règle 2.15.4 - 13 renvois = point receveur
+        'service_par_point': 1     # Règle 2.15.4
     }
 
 class VideoProcessor:

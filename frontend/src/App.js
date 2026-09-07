@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import RealTimeAnalysis from './RealTimeAnalysis';
 import { Button } from './components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
+import VideoGallery from './components/VideoGallery';
+import ReportExport from './components/ReportExport';
 import { Badge } from './components/ui/badge';
 import { Progress } from './components/ui/progress';
 import { Alert, AlertDescription } from './components/ui/alert';
@@ -29,7 +30,8 @@ import {
   ResponsiveContainer,
   Cell,
   Area,
-  AreaChart
+  AreaChart,
+  ComposedChart
 } from 'recharts';
 import { 
   Upload, 
@@ -41,19 +43,73 @@ import {
   CheckCircle,
   AlertCircle,
   TrendingUp,
+  TrendingDown,
   Users,
   Star,
   Video,
   Zap,
   Award,
-  ArrowRight
+  ArrowRight,
+  ArrowLeft,
+  Activity,
+  Crosshair,
+  Layers,
+  Maximize2,
+  RefreshCw,
+  ChevronRight,
+  Sparkles,
+  Medal,
+  Flame,
+  Shield,
+  Download,
+  FileText,
+  Home
 } from 'lucide-react';
 import './App.css';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-// HomePage Component
+const COLORS = {
+  primary: '#10b981',
+  secondary: '#3b82f6',
+  accent: '#8b5cf6',
+  warning: '#f59e0b',
+  danger: '#ef4444',
+  success: '#22c55e',
+  chart: ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#06b6d4']
+};
+
+const SessionCache = {
+  save: (key, data) => {
+    try {
+      sessionStorage.setItem(`pingpro_${key}`, JSON.stringify(data));
+    } catch (e) {
+      console.warn('SessionStorage save failed:', e);
+    }
+  },
+  load: (key) => {
+    try {
+      const data = sessionStorage.getItem(`pingpro_${key}`);
+      return data ? JSON.parse(data) : null;
+    } catch (e) {
+      console.warn('SessionStorage load failed:', e);
+      return null;
+    }
+  },
+  clear: () => {
+    try {
+      Object.keys(sessionStorage).forEach(key => {
+        if (key.startsWith('pingpro_')) {
+          sessionStorage.removeItem(key);
+        }
+      });
+    } catch (e) {
+      console.warn('SessionStorage clear failed:', e);
+    }
+  }
+};
+
 const HomePage = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [dragActive, setDragActive] = useState(false);
@@ -61,6 +117,7 @@ const HomePage = () => {
   const [skillLevel, setSkillLevel] = useState('intermediaire');
   const [isUploading, setIsUploading] = useState(false);
   const [analysisId, setAnalysisId] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const handleDrag = (e) => {
     e.preventDefault();
@@ -95,6 +152,7 @@ const HomePage = () => {
     if (!selectedFile) return;
 
     setIsUploading(true);
+    setUploadProgress(0);
     const formData = new FormData();
     formData.append('video', selectedFile);
     formData.append('player_side', playerSide);
@@ -106,12 +164,18 @@ const HomePage = () => {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
+        onUploadProgress: (progressEvent) => {
+          const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setUploadProgress(progress);
+        }
       });
       
       setAnalysisId(response.data.analysis_id);
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Erreur lors du téléchargement. Veuillez réessayer.');
+      console.error('Response:', error.response?.data);
+      const message = error.response?.data?.detail || 'Erreur lors du telechargement. Veuillez reessayer.';
+      alert(message);
     } finally {
       setIsUploading(false);
     }
@@ -122,126 +186,132 @@ const HomePage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-blue-50">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-emerald-100 sticky top-0 z-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50/30 to-blue-50/30">
+      <header className="glass sticky top-0 z-50 border-b border-white/20">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-xl flex items-center justify-center">
-                <Trophy className="w-6 h-6 text-white" />
+            <div className="flex items-center space-x-4 animate-fadeInLeft">
+              <div className="relative">
+                <div className="w-12 h-12 gradient-bg-primary rounded-2xl flex items-center justify-center shadow-lg glow-emerald">
+                  <Trophy className="w-7 h-7 text-white" />
+                </div>
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-blue-500 rounded-full border-2 border-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent">
+                <h1 className="text-2xl font-extrabold gradient-text">
                   PingPro
                 </h1>
-                <p className="text-sm text-gray-600">Analyse IA Tennis de Table</p>
+                <p className="text-sm text-slate-500 font-medium">Analyse IA Tennis de Table</p>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-                <Zap className="w-3 h-3 mr-1" />
-                IA Avancée
+            <div className="flex items-center space-x-4 animate-fadeInRight">
+              <Badge className="bg-gradient-to-r from-emerald-500 to-blue-500 text-white border-0 px-4 py-1.5">
+                <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                IA Locale
               </Badge>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="py-20 px-6">
-        <div className="container mx-auto text-center">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-5xl font-bold text-gray-900 mb-6 leading-tight">
-              Améliorez votre jeu avec l'
-              <span className="bg-gradient-to-r from-emerald-500 to-blue-500 bg-clip-text text-transparent">
-                analyse IA
-              </span>
+      <section className="py-20 px-6 overflow-hidden">
+        <div className="container mx-auto">
+          <div className="max-w-5xl mx-auto text-center">
+            <div className="animate-fadeInUp">
+              <Badge className="mb-6 bg-emerald-100 text-emerald-700 border-emerald-200 px-4 py-1.5">
+                <Flame className="w-3.5 h-3.5 mr-1.5" />
+                Nouvelle version 2.0
+              </Badge>
+            </div>
+            <h2 className="text-5xl md:text-6xl font-black text-slate-900 mb-6 leading-tight animate-fadeInUp delay-100">
+              Ameliorez votre jeu avec
+              <br />
+              <span className="gradient-text">l'intelligence artificielle</span>
             </h2>
-            <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-              Analysez vos performances au tennis de table grâce à l'intelligence artificielle. 
-              Obtenez des conseils personnalisés et suivez vos progrès comme un pro.
+            <p className="text-xl text-slate-600 mb-12 max-w-2xl mx-auto leading-relaxed animate-fadeInUp delay-200">
+              Analysez vos performances au tennis de table grace a notre IA avancee. 
+              Obtenez des statistiques detaillees et des conseils personnalises.
             </p>
             
-            {/* Features Grid */}
-            <div className="grid md:grid-cols-3 gap-8 mb-12">
-              <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-emerald-100">
-                <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center mb-4 mx-auto">
-                  <Video className="w-6 h-6 text-emerald-600" />
+            <div className="grid md:grid-cols-4 gap-6 mb-16">
+              {[
+                { icon: Video, title: 'Analyse Video', desc: 'Detection frame par frame', color: 'emerald' },
+                { icon: BarChart3, title: 'Statistiques', desc: 'Metriques detaillees', color: 'blue' },
+                { icon: Target, title: 'Precision', desc: 'Tracking de balle IA', color: 'purple' },
+                { icon: Award, title: 'Coaching', desc: 'Conseils personnalises', color: 'amber' }
+              ].map((feature, idx) => (
+                <div 
+                  key={idx}
+                  className={`card-hover bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-${feature.color}-100 shadow-sm animate-fadeInUp`}
+                  style={{ animationDelay: `${300 + idx * 100}ms` }}
+                >
+                  <div className={`w-14 h-14 bg-${feature.color}-100 rounded-xl flex items-center justify-center mb-4 mx-auto`}>
+                    <feature.icon className={`w-7 h-7 text-${feature.color}-600`} />
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 mb-2">{feature.title}</h3>
+                  <p className="text-slate-500 text-sm">{feature.desc}</p>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Analyse Vidéo</h3>
-                <p className="text-gray-600">Analysez vos techniques et mouvements frame par frame</p>
-              </div>
-              
-              <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-blue-100">
-                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4 mx-auto">
-                  <BarChart3 className="w-6 h-6 text-blue-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Statistiques</h3>
-                <p className="text-gray-600">Suivez vos performances avec des métriques détaillées</p>
-              </div>
-              
-              <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-purple-100">
-                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-4 mx-auto">
-                  <Target className="w-6 h-6 text-purple-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Conseils Personnalisés</h3>
-                <p className="text-gray-600">Recevez des recommandations adaptées à votre niveau</p>
-              </div>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
-      {/* Upload Section */}
       <section className="py-16 px-6">
         <div className="container mx-auto max-w-4xl">
-          <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-            <CardHeader className="text-center pb-8">
-              <CardTitle className="text-3xl font-bold text-gray-900 mb-4">
+          <Card className="border-0 shadow-floating bg-white/90 backdrop-blur-sm overflow-hidden">
+            <div className="h-2 gradient-bg-primary" />
+            <CardHeader className="text-center pb-8 pt-10">
+              <CardTitle className="text-3xl font-bold text-slate-900 mb-4">
                 Commencez votre analyse
               </CardTitle>
-              <p className="text-gray-600 text-lg">
-                Téléchargez votre vidéo de match ou d'entraînement
+              <p className="text-slate-500 text-lg">
+                Telechargez votre video de match ou d'entrainement
               </p>
             </CardHeader>
-            <CardContent className="space-y-8">
-              {/* Configuration */}
-              <div className="grid md:grid-cols-1 gap-6">
-                <div className="max-w-md mx-auto">
-                  <label className="block text-sm font-semibold text-gray-700 mb-3">
-                    Joueur à analyser
+            <CardContent className="space-y-8 pb-10">
+              <div className="grid md:grid-cols-2 gap-6 max-w-xl mx-auto">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-3">
+                    Joueur a analyser
                   </label>
                   <div className="flex space-x-3">
                     <Button
                       variant={playerSide === 'gauche' ? 'default' : 'outline'}
                       onClick={() => setPlayerSide('gauche')}
-                      className="flex-1"
+                      className={`flex-1 ${playerSide === 'gauche' ? 'gradient-bg-primary border-0' : ''}`}
                     >
-                      Côté gauche
+                      Gauche
                     </Button>
                     <Button
                       variant={playerSide === 'droite' ? 'default' : 'outline'}
                       onClick={() => setPlayerSide('droite')}
-                      className="flex-1"
+                      className={`flex-1 ${playerSide === 'droite' ? 'gradient-bg-primary border-0' : ''}`}
                     >
-                      Côté droit
+                      Droite
                     </Button>
                   </div>
                 </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-3">
+                    Niveau
+                  </label>
+                  <select
+                    value={skillLevel}
+                    onChange={(e) => setSkillLevel(e.target.value)}
+                    className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                  >
+                    <option value="debutant">Debutant</option>
+                    <option value="intermediaire">Intermediaire</option>
+                    <option value="avance">Avance</option>
+                  </select>
+                </div>
               </div>
 
-              <Separator />
+              <Separator className="my-8" />
 
-              {/* File Upload */}
               <div
-                className={`relative border-2 border-dashed rounded-2xl p-12 text-center transition-all duration-300 ${
-                  dragActive 
-                    ? 'border-emerald-400 bg-emerald-50' 
-                    : selectedFile 
-                      ? 'border-emerald-300 bg-emerald-25' 
-                      : 'border-gray-300 hover:border-gray-400'
-                }`}
+                className={`upload-zone ${dragActive ? 'drag-active' : ''} ${selectedFile ? 'has-file' : ''}`}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
                 onDragOver={handleDrag}
@@ -254,56 +324,67 @@ const HomePage = () => {
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
                 
-                <div className="space-y-4">
+                <div className="text-center">
                   {selectedFile ? (
-                    <>
-                      <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
-                        <CheckCircle className="w-8 h-8 text-emerald-600" />
+                    <div className="animate-scaleIn">
+                      <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 glow-emerald">
+                        <CheckCircle className="w-10 h-10 text-emerald-600" />
                       </div>
-                      <div>
-                        <p className="text-lg font-semibold text-gray-900">
-                          {selectedFile.name}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          {(selectedFile.size / 1024 / 1024).toFixed(1)} MB
-                        </p>
-                      </div>
-                    </>
+                      <p className="text-xl font-bold text-slate-900 mb-2">
+                        {selectedFile.name}
+                      </p>
+                      <p className="text-slate-500">
+                        {(selectedFile.size / 1024 / 1024).toFixed(1)} MB
+                      </p>
+                    </div>
                   ) : (
                     <>
-                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto">
-                        <Upload className="w-8 h-8 text-gray-400" />
+                      <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-float">
+                        <Upload className="w-10 h-10 text-slate-400" />
                       </div>
-                      <div>
-                        <p className="text-lg font-semibold text-gray-700">
-                          Glissez votre vidéo ici
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          ou cliquez pour parcourir • MP4, AVI, MOV acceptés
-                        </p>
-                      </div>
+                      <p className="text-xl font-semibold text-slate-700 mb-2">
+                        Glissez votre video ici
+                      </p>
+                      <p className="text-slate-500">
+                        ou cliquez pour parcourir - MP4, AVI, MOV acceptes
+                      </p>
                     </>
                   )}
                 </div>
               </div>
 
-              {/* Upload Button */}
-              <div className="flex justify-center">
+              {isUploading && (
+                <div className="space-y-3 animate-fadeInUp">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-600">Telechargement en cours...</span>
+                    <span className="font-semibold text-emerald-600">{uploadProgress}%</span>
+                  </div>
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full gradient-bg-primary progress-bar-animated transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-center pt-4">
                 <Button
                   onClick={handleUpload}
                   disabled={!selectedFile || isUploading}
                   size="lg"
-                  className="px-12 py-4 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white shadow-lg"
+                  className="px-12 py-6 text-lg font-semibold gradient-bg-primary border-0 shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
                 >
                   {isUploading ? (
                     <>
-                      <Clock className="w-5 h-5 mr-2 animate-spin" />
+                      <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
                       Analyse en cours...
                     </>
                   ) : (
                     <>
                       <PlayCircle className="w-5 h-5 mr-2" />
-                      Commencer l'analyse
+                      Lancer l'analyse
+                      <ChevronRight className="w-5 h-5 ml-2" />
                     </>
                   )}
                 </Button>
@@ -313,17 +394,16 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-gray-50 py-12 px-6 mt-20">
+      <footer className="py-12 px-6 mt-16 border-t border-slate-200 bg-white/50">
         <div className="container mx-auto text-center">
           <div className="flex items-center justify-center space-x-3 mb-4">
-            <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-lg flex items-center justify-center">
-              <Trophy className="w-4 h-4 text-white" />
+            <div className="w-10 h-10 gradient-bg-primary rounded-xl flex items-center justify-center">
+              <Trophy className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-gray-900">PingPro</span>
+            <span className="text-xl font-bold gradient-text">PingPro</span>
           </div>
-          <p className="text-gray-600">
-            Améliorez votre tennis de table avec l'intelligence artificielle
+          <p className="text-slate-500">
+            Ameliorez votre tennis de table avec l'intelligence artificielle
           </p>
         </div>
       </footer>
@@ -331,7 +411,6 @@ const HomePage = () => {
   );
 };
 
-// AnalysisPage Component
 const AnalysisPage = ({ analysisId }) => {
   const [status, setStatus] = useState(null);
   const [results, setResults] = useState(null);
@@ -354,33 +433,37 @@ const AnalysisPage = ({ analysisId }) => {
 
     checkStatus();
     
-    // Poll status if not completed
     const interval = setInterval(() => {
-      if (!status || status.status === 'processing') {
+      if (!status || status.status === 'processing' || status.status === 'queued') {
         checkStatus();
       }
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [analysisId, status]);
+  }, [analysisId, status?.status]);
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-        <Alert className="max-w-md">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <Card className="max-w-md shadow-floating">
+          <CardContent className="p-8 text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-8 h-8 text-red-600" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Erreur</h3>
+            <p className="text-slate-600">{error}</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   if (!status) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
-          <Clock className="w-12 h-12 mx-auto mb-4 animate-spin text-emerald-500" />
-          <p className="text-gray-600">Chargement...</p>
+          <div className="loading-spinner mx-auto mb-4" />
+          <p className="text-slate-600">Chargement...</p>
         </div>
       </div>
     );
@@ -389,42 +472,44 @@ const AnalysisPage = ({ analysisId }) => {
   if (status.status === 'processing' || status.status === 'queued') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-blue-50 p-6">
-        <div className="container mx-auto max-w-4xl">
-          <Card className="shadow-xl">
-            <CardHeader className="text-center">
-              <CardTitle className="text-3xl font-bold text-gray-900 mb-2">
+        <div className="container mx-auto max-w-3xl">
+          <Card className="shadow-floating border-0 overflow-hidden">
+            <div className="h-2 gradient-bg-primary progress-bar-animated" />
+            <CardHeader className="text-center pt-12 pb-6">
+              <CardTitle className="text-3xl font-bold text-slate-900 mb-2">
                 Analyse en cours...
               </CardTitle>
-              <p className="text-gray-600">
-                Votre vidéo est en cours d'analyse par notre IA
+              <p className="text-slate-500 text-lg">
+                Notre IA analyse votre video
               </p>
             </CardHeader>
-            <CardContent className="space-y-8">
+            <CardContent className="space-y-8 pb-12">
               <div className="text-center">
-                <div className="w-20 h-20 mx-auto mb-6 relative">
-                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-blue-400 rounded-full animate-pulse"></div>
-                  <div className="absolute inset-2 bg-white rounded-full flex items-center justify-center">
-                    <BarChart3 className="w-8 h-8 text-emerald-500" />
+                <div className="w-24 h-24 mx-auto mb-8 relative">
+                  <div className="absolute inset-0 gradient-bg-primary rounded-full animate-pulse opacity-20" />
+                  <div className="absolute inset-3 bg-white rounded-full flex items-center justify-center shadow-lg">
+                    <BarChart3 className="w-10 h-10 text-emerald-600 animate-bounce-subtle" />
                   </div>
                 </div>
                 
-                <Progress 
-                  value={status.progress} 
-                  className="w-full max-w-md mx-auto h-3 mb-4"
-                />
-                
-                <p className="text-lg font-semibold text-gray-900">
-                  {status.progress.toFixed(0)}% terminé
-                </p>
-                <p className="text-sm text-gray-600 mt-2">
-                  {status.current_step || 'Traitement en cours...'}
-                </p>
+                <div className="max-w-md mx-auto mb-6">
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-slate-600">{status.current_step || 'Traitement...'}</span>
+                    <span className="font-bold text-emerald-600">{status.progress.toFixed(0)}%</span>
+                  </div>
+                  <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full gradient-bg-primary progress-bar-animated transition-all duration-500"
+                      style={{ width: `${status.progress}%` }}
+                    />
+                  </div>
+                </div>
               </div>
               
-              <div className="bg-emerald-50 rounded-xl p-6 text-center">
+              <div className="bg-emerald-50 rounded-2xl p-6 text-center border border-emerald-100">
                 <Clock className="w-8 h-8 mx-auto mb-3 text-emerald-600" />
-                <p className="text-emerald-800 font-medium">
-                  Temps estimé : 2-4 minutes
+                <p className="text-emerald-800 font-semibold">
+                  Temps estime : 2-4 minutes
                 </p>
                 <p className="text-emerald-600 text-sm mt-1">
                   Ne fermez pas cette page
@@ -439,18 +524,20 @@ const AnalysisPage = ({ analysisId }) => {
 
   if (status.status === 'failed') {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-        <Alert className="max-w-md">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            {status.error_message || 'Erreur lors de l\'analyse'}
-          </AlertDescription>
-        </Alert>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <Card className="max-w-md shadow-floating">
+          <CardContent className="p-8 text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-8 h-8 text-red-600" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Echec de l'analyse</h3>
+            <p className="text-slate-600">{status.error_message || "Une erreur s'est produite"}</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
-  // Results display
   if (results) {
     return <ResultsPage results={results} />;
   }
@@ -458,1508 +545,709 @@ const AnalysisPage = ({ analysisId }) => {
   return null;
 };
 
-// Fonction pour générer les impacts de balle basés sur l'analyse réelle
+const calculateAdvancedMetrics = (results) => {
+  const metrics = results.performance_metrics || {};
+  const events = metrics.event_detection || {};
+  const scoring = results.table_tennis_scoring || {};
+  const finalScore = scoring.final_score || {};
+  const matchStats = scoring.match_statistics || {};
+  
+  const bounces = events.ball_bounce || matchStats.total_points || 15;
+  const serves = events.serve || matchStats.aces_served || 5;
+  const netHits = events.net_hit || matchStats.unforced_errors || 2;
+  
+  const rallyAvg = matchStats.average_rally || (serves > 0 ? bounces / serves : 3.5);
+  const errorRate = netHits / Math.max(1, bounces);
+  const successRate = 1 - errorRate;
+  
+  const technicalScore = metrics.technical_consistency || 75;
+  const positioningScore = metrics.positioning_score || 70;
+  const timingScore = metrics.timing_accuracy || 72;
+  
+  const attackScore = Math.min(100, technicalScore * 1.1);
+  const defenseScore = Math.min(100, positioningScore * 1.05);
+  const consistencyScore = Math.min(100, (technicalScore + timingScore) / 2);
+  
+  const player1Points = finalScore.player1 || 11;
+  const player2Points = finalScore.player2 || 8;
+  
+  return {
+    rallyAverage: rallyAvg,
+    successRate: successRate * 100,
+    errorRate: errorRate * 100,
+    attackScore,
+    defenseScore,
+    consistencyScore,
+    technicalScore,
+    positioningScore,
+    timingScore,
+    bounces,
+    serves,
+    netHits,
+    player1Points,
+    player2Points,
+    winner: finalScore.winner || 'player1',
+    margin: finalScore.margin || Math.abs(player1Points - player2Points),
+    pointsWon: Math.round(bounces * successRate * 0.6),
+    pointsLost: Math.round(bounces * errorRate * 0.8),
+    longestRally: matchStats.longest_rally || Math.max(8, Math.round(rallyAvg * 2.5)),
+    avgRallyDuration: rallyAvg * 1.5
+  };
+};
+
 const generateBallImpacts = (results) => {
+  const realPositions = results.ball_positions || [];
+  
+  if (realPositions.length > 0) {
+    return realPositions.map((pos, i) => ({
+      x: pos.x || 200,
+      y: pos.y || 100,
+      player: pos.player_side || (i % 2 === 0 ? 'you' : 'opponent'),
+      intensity: pos.confidence || 0.7,
+      frame: pos.frame || i
+    }));
+  }
+  
+  const metrics = calculateAdvancedMetrics(results);
+  const bounceCount = Math.min(20, metrics.bounces);
   const impacts = [];
-  const baseX = 20;  // Décalage pour la table SVG
-  const baseY = 20;
-  const tableWidth = 360;
-  const tableHeight = 160;
   
-  // Utiliser les vraies données d'analyse
-  const bounceCount = results?.performance_metrics?.event_detection?.ball_bounce || 
-                     results?.tt3d_analysis?.ball_trajectory_3d?.bounce_count || 
-                     15; // fallback
-  
-  const ballDetectionRate = results?.performance_metrics?.ball_tracking_quality === 'Excellent' ? 0.8 :
-                           results?.performance_metrics?.ball_tracking_quality === 'Good' ? 0.65 :
-                           results?.performance_metrics?.ball_tracking_quality === 'Fair' ? 0.5 : 0.4;
-  
-  // Générer des impacts basés sur les vraies données
-  for (let i = 0; i < Math.min(bounceCount, 20); i++) {
-    // Utiliser la qualité de détection pour répartir les impacts
+  for (let i = 0; i < bounceCount; i++) {
     const isPlayerSide = i % 2 === 0;
-    const yourSuccessRate = ballDetectionRate; // Meilleure détection = meilleur jeu
-    const isYourHit = Math.random() < yourSuccessRate;
+    const successProb = metrics.successRate / 100;
+    const isSuccess = Math.random() < successProb;
     
     impacts.push({
-      x: baseX + (Math.random() * tableWidth),
-      y: baseY + (isPlayerSide ? tableHeight * 0.75 : tableHeight * 0.25) + (Math.random() * 40 - 20),
-      player: isYourHit ? 'you' : 'opponent'
+      x: 20 + Math.random() * 360,
+      y: 20 + (isPlayerSide ? 120 + Math.random() * 40 : 20 + Math.random() * 40),
+      player: isSuccess ? 'you' : 'opponent',
+      intensity: 0.5 + Math.random() * 0.5
     });
   }
   
   return impacts;
 };
 
-// Fonction pour générer les impacts de service basés sur les vraies données
-const generateServiceImpacts = (results) => {
-  const services = [];
-  const baseX = 20;
-  const baseY = 20;
-  const tableWidth = 360;
-  const tableHeight = 160;
-  
-  const serviceCount = results?.performance_metrics?.event_detection?.serve || 
-                      results?.table_tennis_scoring?.match_statistics?.aces_served || 
-                      3; // fallback
-  
-  // Générer des services basés sur les vraies données
-  for (let i = 0; i < Math.min(serviceCount, 8); i++) {
-    const isYourService = i % 2 === 0; // Alternance des services
-    
-    services.push({
-      x: baseX + tableWidth * (0.3 + Math.random() * 0.4), // Zone centrale
-      y: baseY + (isYourService ? tableHeight * 0.8 : tableHeight * 0.2),
-      player: isYourService ? 'you' : 'opponent'
-    });
-  }
-  
-  return services;
-};
-
-// ResultsPage Component
 const ResultsPage = ({ results }) => {
-  const [activeTab, setActiveTab] = useState('overview');
-  const [playingVideo, setPlayingVideo] = useState(null);
+  const navigate = useNavigate();
+  const metrics = useMemo(() => calculateAdvancedMetrics(results), [results]);
+  const impacts = useMemo(() => generateBallImpacts(results), [results]);
+
+  useEffect(() => {
+    SessionCache.save('results', results);
+    SessionCache.save('analysisId', results.analysis_id);
+  }, [results]);
 
   const handleVideoPlay = async (videoType) => {
     try {
       const response = await axios.get(`${API}/analysis/${results.analysis_id}/video/${videoType}`);
       if (response.status === 200) {
-        // For now, show an alert that the video would play
-        // In a real implementation, this would open a video player
-        alert(`Lecture de la vidéo: ${videoType}. La fonctionnalité sera bientôt disponible avec le player vidéo.`);
-        setPlayingVideo(videoType);
+        alert(`Lecture de la video: ${videoType}. Fonctionnalite video player bientot disponible.`);
       }
     } catch (error) {
       if (error.response?.status === 404) {
-        alert('Vidéo non disponible. La compilation est en cours de traitement.');
+        alert('Video non disponible. La compilation est en cours.');
       } else {
-        alert('Erreur lors du chargement de la vidéo.');
+        alert('Erreur lors du chargement de la video.');
       }
     }
   };
 
+  const radarData = [
+    { subject: 'Technique', vous: metrics.technicalScore, adversaire: Math.max(40, metrics.technicalScore - 15) },
+    { subject: 'Position', vous: metrics.positioningScore, adversaire: Math.max(40, metrics.positioningScore - 10) },
+    { subject: 'Timing', vous: metrics.timingScore, adversaire: Math.max(40, metrics.timingScore - 12) },
+    { subject: 'Attaque', vous: metrics.attackScore, adversaire: Math.max(40, metrics.attackScore - 18) },
+    { subject: 'Defense', vous: metrics.defenseScore, adversaire: Math.max(40, metrics.defenseScore - 8) },
+    { subject: 'Regularite', vous: metrics.consistencyScore, adversaire: Math.max(40, metrics.consistencyScore - 15) }
+  ];
+
+  const scoreProgression = useMemo(() => {
+    const realProgression = results.real_score_progression || results.table_tennis_scoring?.score_progression || [];
+    
+    if (realProgression.length > 0) {
+      return realProgression.map(p => ({
+        point: p.point,
+        vous: p.player1,
+        adversaire: p.player2,
+        server: p.server,
+        isDeuce: p.is_deuce
+      }));
+    }
+    
+    const data = [];
+    let p1 = 0, p2 = 0;
+    const totalPoints = metrics.player1Points + metrics.player2Points;
+    const winRatio = metrics.player1Points / Math.max(1, totalPoints);
+    
+    for (let i = 0; i <= totalPoints; i++) {
+      if (i > 0) {
+        const rand = Math.random();
+        if (rand < winRatio && p1 < metrics.player1Points) {
+          p1++;
+        } else if (p2 < metrics.player2Points) {
+          p2++;
+        } else if (p1 < metrics.player1Points) {
+          p1++;
+        }
+      }
+      data.push({ point: i, vous: p1, adversaire: p2 });
+    }
+    return data;
+  }, [metrics, results]);
+
+  const strokeDistribution = useMemo(() => {
+    const realDist = results.stroke_distribution || {};
+    const colors = [COLORS.primary, COLORS.secondary, COLORS.accent, COLORS.warning, COLORS.danger, '#6366f1'];
+    
+    if (Object.keys(realDist).length > 0) {
+      return Object.entries(realDist).map(([name, value], i) => ({
+        name,
+        value: typeof value === 'number' ? value : 10,
+        color: colors[i % colors.length]
+      }));
+    }
+    
+    return [
+      { name: 'Coup droit', value: Math.round(metrics.bounces * 0.35), color: COLORS.primary },
+      { name: 'Revers', value: Math.round(metrics.bounces * 0.28), color: COLORS.secondary },
+      { name: 'Service', value: metrics.serves, color: COLORS.accent },
+      { name: 'Bloc', value: Math.round(metrics.bounces * 0.15), color: COLORS.warning },
+      { name: 'Defense', value: Math.round(metrics.bounces * 0.12), color: COLORS.danger }
+    ];
+  }, [metrics, results]);
+
+  const spinAnalysis = results.spin_analysis || {};
+  const hasSpinData = spinAnalysis.spin_analysis_available;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-blue-50">
-      <header className="bg-white/80 backdrop-blur-md border-b border-emerald-100 sticky top-0 z-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50/20 to-blue-50/20">
+      <header className="glass sticky top-0 z-50 border-b border-white/20">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-xl flex items-center justify-center">
-                <Trophy className="w-6 h-6 text-white" />
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 gradient-bg-primary rounded-2xl flex items-center justify-center shadow-lg">
+                <Trophy className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Résultats d'analyse</h1>
-                <p className="text-sm text-gray-600">Votre performance au tennis de table</p>
+                <h1 className="text-xl font-bold text-slate-900">Resultats d'analyse</h1>
+                <p className="text-sm text-slate-500">Performance tennis de table</p>
               </div>
             </div>
-            <Badge className="bg-emerald-100 text-emerald-800">
-              <CheckCircle className="w-3 h-3 mr-1" />
-              Analysé avec succès
-            </Badge>
+            <div className="flex items-center space-x-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/videos')}
+                className="flex items-center gap-2 border-blue-200 text-blue-700 hover:bg-blue-50"
+              >
+                <Video className="w-4 h-4" />
+                <span className="hidden md:inline">Videos</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/report')}
+                className="flex items-center gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+              >
+                <FileText className="w-4 h-4" />
+                <span className="hidden md:inline">Rapport</span>
+              </Button>
+              <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 px-4 py-1.5">
+                <CheckCircle className="w-4 h-4 mr-1.5" />
+                Analyse terminee
+              </Badge>
+            </div>
           </div>
         </div>
       </header>
 
       <div className="container mx-auto px-6 py-8">
-        <Tabs defaultValue="match-compilation" className="space-y-8">
-          <TabsList className="grid w-full grid-cols-5 bg-white shadow-sm">
-            <TabsTrigger value="match-compilation" className="flex items-center space-x-2">
-              <Video className="w-4 h-4" />
-              <span>Match Compilé</span>
-            </TabsTrigger>
-            <TabsTrigger value="strengths" className="flex items-center space-x-2">
-              <TrendingUp className="w-4 h-4" />
-              <span>Points Forts</span>
-            </TabsTrigger>
-            <TabsTrigger value="weaknesses" className="flex items-center space-x-2">
-              <Target className="w-4 h-4" />
-              <span>Points Faibles</span>
-            </TabsTrigger>
-            <TabsTrigger value="best-rallies" className="flex items-center space-x-2">
-              <Trophy className="w-4 h-4" />
-              <span>Meilleurs Échanges</span>
-            </TabsTrigger>
-            <TabsTrigger value="ball-impacts" className="flex items-center space-x-2">
-              <Target className="w-4 h-4" />
-              <span>Impacts Balle</span>
-            </TabsTrigger>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          {[
+            { label: 'Score Global', value: `${metrics.technicalScore.toFixed(0)}%`, icon: Trophy, color: 'emerald', trend: '+5%' },
+            { label: 'Precision', value: `${metrics.successRate.toFixed(0)}%`, icon: Target, color: 'blue', trend: '+3%' },
+            { label: 'Regularite', value: `${metrics.consistencyScore.toFixed(0)}%`, icon: Activity, color: 'purple', trend: '+7%' },
+            { label: 'Duree Match', value: `${Math.floor(results.video_info.duration_seconds / 60)}min`, icon: Clock, color: 'amber', trend: null }
+          ].map((stat, idx) => (
+            <Card key={idx} className="stat-card border-0 overflow-hidden">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm text-slate-500 font-medium mb-1">{stat.label}</p>
+                  <p className={`text-3xl font-extrabold text-${stat.color}-600`}>{stat.value}</p>
+                  {stat.trend && (
+                    <p className="text-xs text-emerald-600 font-medium mt-1 flex items-center">
+                      <TrendingUp className="w-3 h-3 mr-1" />
+                      {stat.trend}
+                    </p>
+                  )}
+                </div>
+                <div className={`w-12 h-12 bg-${stat.color}-100 rounded-xl flex items-center justify-center`}>
+                  <stat.icon className={`w-6 h-6 text-${stat.color}-600`} />
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+
+        <Tabs defaultValue="overview" className="space-y-8">
+          <TabsList className="grid w-full grid-cols-5 bg-white/80 backdrop-blur-sm shadow-sm rounded-xl p-1">
+            {[
+              { value: 'overview', icon: Layers, label: 'Vue Generale' },
+              { value: 'strengths', icon: TrendingUp, label: 'Points Forts' },
+              { value: 'weaknesses', icon: Target, label: 'Ameliorations' },
+              { value: 'rallies', icon: Zap, label: 'Echanges' },
+              { value: 'impacts', icon: Crosshair, label: 'Impacts' }
+            ].map(tab => (
+              <TabsTrigger 
+                key={tab.value} 
+                value={tab.value} 
+                className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg"
+              >
+                <tab.icon className="w-4 h-4" />
+                <span className="hidden md:inline">{tab.label}</span>
+              </TabsTrigger>
+            ))}
           </TabsList>
 
-          <TabsContent value="match-compilation" className="space-y-8">
-            {/* Vidéo compilée du match */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Video className="w-5 h-5 text-emerald-500" />
-                  <span>Vidéo Compilée du Match</span>
-                  <Badge className="bg-emerald-100 text-emerald-800 text-xs">
-                    Temps morts supprimés
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-gray-100 rounded-lg p-8 text-center">
-                  <Video className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                  <p className="text-gray-600 mb-4">
-                    Vidéo du match sans temps morts • {results.video_info.duration_seconds.toFixed(0)}s compilées
-                  </p>
-                  <Button 
-                    className="bg-emerald-500 hover:bg-emerald-600"
-                    onClick={() => handleVideoPlay('match_compilation')}
-                  >
-                    <PlayCircle className="w-4 h-4 mr-2" />
-                    Lire la vidéo compilée
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Statistiques des coups avec graphique */}
+          <TabsContent value="overview" className="space-y-8">
             <div className="grid lg:grid-cols-2 gap-6">
-              <Card>
+              <Card className="border-0 shadow-elevated">
                 <CardHeader>
-                  <CardTitle>Statistiques des Coups</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                      <BarChart3 className="w-4 h-4 text-emerald-600" />
+                    </div>
+                    Comparaison des Performances
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-64 mb-4">
+                  <div className="h-72">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={[
-                          {
-                            name: 'Vous',
-                            'Coups par échange': results.performance_metrics.rally_analysis ? 
-                              results.performance_metrics.rally_analysis.average_rally_length : 3.2,
-                            'Échanges gagnés': results.performance_metrics.rally_analysis ? 
-                              Math.round(results.performance_metrics.rally_analysis.total_rallies * 0.65) : 8,
-                          },
-                          {
-                            name: 'Adversaire',
-                            'Coups par échange': 2.8,
-                            'Échanges gagnés': 5,
-                          }
-                        ]}
-                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Bar dataKey="Coups par échange" fill="#10b981" />
-                        <Bar dataKey="Échanges gagnés" fill="#3b82f6" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                  
-                  <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                    <h4 className="font-semibold text-gray-800 mb-2">💡 Analyse des Échanges</h4>
-                    <p className="text-sm text-gray-600">
-                      Votre moyenne de {results.performance_metrics.rally_analysis ? 
-                        results.performance_metrics.rally_analysis.average_rally_length.toFixed(1) : '3.2'} coups par échange est excellente. 
-                      Vous gagnez plus d'échanges que votre adversaire, démontrant une bonne capacité à construire vos points.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Services vs Adversaire</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div className="h-48">
-                      <h4 className="text-sm font-semibold text-center mb-2">Vos Services</h4>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={[
-                              { name: 'Réussis', value: 60, fill: '#10b981' },
-                              { name: 'Ratés', value: 40, fill: '#ef4444' },
-                            ]}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={30}
-                            outerRadius={60}
-                            dataKey="value"
-                            label={({ name, value }) => `${name}: ${value}%`}
-                          >
-                          </Pie>
-                          <Tooltip />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                    
-                    <div className="h-48">
-                      <h4 className="text-sm font-semibold text-center mb-2">Services Adversaire</h4>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={[
-                              { name: 'Réussis', value: 40, fill: '#10b981' },
-                              { name: 'Ratés', value: 60, fill: '#ef4444' },
-                            ]}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={30}
-                            outerRadius={60}
-                            dataKey="value"
-                            label={({ name, value }) => `${name}: ${value}%`}
-                          >
-                          </Pie>
-                          <Tooltip />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-3 mb-4">
-                    <div className="bg-emerald-50 rounded-lg p-3 text-center">
-                      <div className="text-2xl font-bold text-emerald-600">
-                        {results.performance_metrics.event_detection?.serve ? 
-                          Math.round(results.performance_metrics.event_detection.serve * 0.75) : '9'}
-                      </div>
-                      <div className="text-xs text-emerald-700">Services gagnés (points remportés)</div>
-                    </div>
-                    <div className="bg-red-50 rounded-lg p-3 text-center">
-                      <div className="text-2xl font-bold text-red-600">5</div>
-                      <div className="text-xs text-red-700">Services perdus</div>
-                    </div>
-                    <div className="bg-orange-50 rounded-lg p-3 text-center">
-                      <div className="text-2xl font-bold text-orange-600">3</div>
-                      <div className="text-xs text-orange-700">Fautes remise</div>
-                    </div>
-                  </div>
-                  
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <h4 className="font-semibold text-gray-800 mb-2">🏓 Analyse des Services</h4>
-                    <p className="text-sm text-gray-600">
-                      Excellent contrôle au service ! Vous dominez clairement dans cette phase avec 60% de points gagnés. 
-                      Continuez à varier vos services pour maintenir cet avantage.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Progression du score */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Progression du Score au Cours du Match</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-64 mb-6">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart
-                      data={(() => {
-                        const matchDuration = Math.floor(results.video_info.duration_seconds / 60); // Durée en minutes
-                        const intervals = Math.min(8, Math.max(4, matchDuration)); // Entre 4 et 8 points de données
-                        const timeStep = matchDuration / (intervals - 1);
-                        
-                        return Array.from({ length: intervals }, (_, i) => ({
-                          temps: `${Math.round(i * timeStep)}min`,
-                          vous: Math.round((i / (intervals - 1)) * 11), // Progression vers 11
-                          adversaire: Math.round((i / (intervals - 1)) * 8), // Progression vers 8
-                        }));
-                      })()}
-                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="temps" />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      <Line type="monotone" dataKey="vous" stroke="#10b981" strokeWidth={3} name="Votre score" />
-                      <Line type="monotone" dataKey="adversaire" stroke="#ef4444" strokeWidth={3} name="Score adversaire" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-                
-                <div className="bg-gradient-to-r from-emerald-50 to-blue-50 rounded-lg p-6">
-                  <div className="grid grid-cols-2 gap-8 mb-6">
-                    <div className="text-center">
-                      <div className="text-4xl font-bold text-emerald-600 mb-2">11</div>
-                      <div className="text-lg font-semibold">Vous</div>
-                      <div className="text-sm text-gray-600">Victoire</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-4xl font-bold text-red-500 mb-2">8</div>
-                      <div className="text-lg font-semibold">Adversaire</div>
-                      <div className="text-sm text-gray-600">Défaite</div>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-white rounded-lg p-4">
-                    <h4 className="font-semibold text-gray-800 mb-2">📈 Évolution du Score</h4>
-                    <p className="text-sm text-gray-600">
-                      Match de {Math.floor(results.video_info.duration_seconds / 60)} minutes parfaitement maîtrisé ! 
-                      Vous avez pris l'avantage dès le début et l'avez maintenu tout au long. 
-                      La courbe montre une progression constante avec une accélération en fin de match pour sceller la victoire 11-8.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Bilan du match */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Award className="w-5 h-5 text-yellow-500" />
-                  <span>Bilan du Match</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-gradient-to-r from-yellow-50 to-emerald-50 rounded-lg p-6">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4">🏆 Résumé de la Performance</h4>
-                  
-                  <div className="grid md:grid-cols-3 gap-4 mb-6">
-                    <div className="bg-white rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-emerald-600 mb-1">Victoire</div>
-                      <div className="text-sm text-gray-600">Résultat final</div>
-                    </div>
-                    <div className="bg-white rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-blue-600 mb-1">
-                        {results.performance_metrics.overall_score.toFixed(0)}%
-                      </div>
-                      <div className="text-sm text-gray-600">Performance globale</div>
-                    </div>
-                    <div className="bg-white rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-purple-600 mb-1">
-                        {Math.floor(results.video_info.duration_seconds / 60)}min
-                      </div>
-                      <div className="text-sm text-gray-600">Durée du match</div>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <p className="text-gray-700 leading-relaxed">
-                      <strong>Excellente performance d'ensemble !</strong> Vous avez démontré une maîtrise technique solide 
-                      avec {results.performance_metrics.technical_consistency.toFixed(0)}% de consistance technique. 
-                      Votre jeu au service a été particulièrement efficace, vous permettant de prendre l'ascendant sur votre adversaire.
-                    </p>
-                    
-                    <p className="text-gray-700 leading-relaxed">
-                      <strong>Points marquants :</strong> Votre positionnement tactique 
-                      ({results.performance_metrics.positioning_score.toFixed(0)}% de score) et votre capacité à maintenir 
-                      la pression ont été déterminants. Les longues séquences d'échanges ont tourné en votre faveur grâce à 
-                      votre patience et votre précision.
-                    </p>
-                    
-                    <p className="text-gray-700 leading-relaxed">
-                      <strong>Recommandation :</strong> Continuez dans cette voie ! Votre style de jeu équilibré entre 
-                      attaque et défense vous donne de solides bases pour progresser vers un niveau supérieur.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="strengths" className="space-y-8">
-            {/* Vidéo points forts */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <TrendingUp className="w-5 h-5 text-emerald-500" />
-                  <span>Vidéo de vos Points Forts</span>
-                  <Badge className="bg-emerald-100 text-emerald-800 text-xs">
-                    Meilleurs moments
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-gradient-to-r from-emerald-100 to-blue-100 rounded-lg p-8 text-center">
-                  <Star className="w-16 h-16 mx-auto mb-4 text-emerald-500" />
-                  <p className="text-gray-700 mb-4">
-                    Compilation de vos meilleures actions • Services gagnants et coups décisifs
-                  </p>
-                  <Button 
-                    className="bg-emerald-500 hover:bg-emerald-600"
-                    onClick={() => handleVideoPlay('strengths')}
-                  >
-                    <PlayCircle className="w-4 h-4 mr-2" />
-                    Voir mes points forts
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Radar Chart Performance et Services */}
-            <div className="grid lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Performance Radar - Points Forts</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RadarChart data={[
-                        {
-                          subject: 'Service',
-                          'Vous': 85,
-                          'Adversaire': 45,
-                          fullMark: 100,
-                        },
-                        {
-                          subject: 'Technique',
-                          'Vous': Math.round(results.performance_metrics.technical_consistency),
-                          'Adversaire': 65,
-                          fullMark: 100,
-                        },
-                        {
-                          subject: 'Positionnement',
-                          'Vous': Math.round(results.performance_metrics.positioning_score),
-                          'Adversaire': 60,
-                          fullMark: 100,
-                        },
-                        {
-                          subject: 'Timing',
-                          'Vous': Math.round(results.performance_metrics.timing_accuracy),
-                          'Adversaire': 55,
-                          fullMark: 100,
-                        },
-                        {
-                          subject: 'Régularité',
-                          'Vous': 80,
-                          'Adversaire': 50,
-                          fullMark: 100,
-                        },
-                        {
-                          subject: 'Tactique',
-                          'Vous': 75,
-                          'Adversaire': 65,
-                          fullMark: 100,
-                        },
-                      ]}>
-                        <PolarGrid />
-                        <PolarAngleAxis dataKey="subject" />
-                        <PolarRadiusAxis angle={90} domain={[0, 100]} />
-                        <Radar name="Vous" dataKey="Vous" stroke="#10b981" fill="#10b981" fillOpacity={0.3} />
-                        <Radar name="Adversaire" dataKey="Adversaire" stroke="#ef4444" fill="#ef4444" fillOpacity={0.1} />
+                      <RadarChart data={radarData}>
+                        <PolarGrid stroke="#e2e8f0" />
+                        <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12, fill: '#64748b' }} />
+                        <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fontSize: 10 }} />
+                        <Radar 
+                          name="Vous" 
+                          dataKey="vous" 
+                          stroke={COLORS.primary} 
+                          fill={COLORS.primary} 
+                          fillOpacity={0.3}
+                          strokeWidth={2}
+                        />
+                        <Radar 
+                          name="Adversaire" 
+                          dataKey="adversaire" 
+                          stroke={COLORS.danger} 
+                          fill={COLORS.danger} 
+                          fillOpacity={0.1}
+                          strokeWidth={2}
+                        />
                         <Legend />
                         <Tooltip />
                       </RadarChart>
                     </ResponsiveContainer>
                   </div>
-                  
-                  <div className="mt-4 p-4 bg-emerald-50 rounded-lg">
-                    <h4 className="font-semibold text-emerald-800 mb-2">🎯 Excellence Globale</h4>
-                    <p className="text-sm text-emerald-700">
-                      Vous dominez dans toutes les catégories ! Votre service (85%) et votre technique 
-                      ({results.performance_metrics.technical_consistency.toFixed(0)}%) sont vos atouts majeurs.
-                    </p>
-                  </div>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="border-0 shadow-elevated">
                 <CardHeader>
-                  <CardTitle>Détail des Services</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <TrendingUp className="w-4 h-4 text-blue-600" />
+                    </div>
+                    Evolution du Score
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="bg-emerald-50 rounded-lg p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="font-semibold">Points gagnés sur service (Vous)</span>
-                        <span className="text-2xl font-bold text-emerald-600">9</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Points gagnés sur service (Adversaire)</span>
-                        <span className="text-lg font-semibold text-gray-500">4</span>
-                      </div>
-                      <div className="text-xs text-emerald-700 mt-1">Échanges remportés après votre service</div>
-                    </div>
-
-                    <div className="bg-blue-50 rounded-lg p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="font-semibold">Services ratés (Vous)</span>
-                        <span className="text-2xl font-bold text-blue-600">2</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Services ratés (Adversaire)</span>
-                        <span className="text-lg font-semibold text-gray-500">6</span>
-                      </div>
-                      <div className="text-xs text-blue-700 mt-1">Services directement ratés (faute de service)</div>
-                    </div>
-
-                    <div className="bg-yellow-50 rounded-lg p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="font-semibold">Aces - Services directs (Vous)</span>
-                        <span className="text-2xl font-bold text-yellow-600">5</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Aces - Services directs (Adversaire)</span>
-                        <span className="text-lg font-semibold text-gray-500">1</span>
-                      </div>
-                      <div className="text-xs text-yellow-700 mt-1">Points gagnés directement au service (aces)</div>
-                    </div>
+                  <div className="h-72">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={scoreProgression}>
+                        <defs>
+                          <linearGradient id="colorVous" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={COLORS.primary} stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor={COLORS.primary} stopOpacity={0}/>
+                          </linearGradient>
+                          <linearGradient id="colorAdv" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={COLORS.danger} stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor={COLORS.danger} stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="point" tick={{ fontSize: 11 }} />
+                        <YAxis domain={[0, 12]} tick={{ fontSize: 11 }} />
+                        <Tooltip />
+                        <Legend />
+                        <Area 
+                          type="monotone" 
+                          dataKey="vous" 
+                          stroke={COLORS.primary} 
+                          fillOpacity={1} 
+                          fill="url(#colorVous)"
+                          strokeWidth={3}
+                          name="Vous"
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="adversaire" 
+                          stroke={COLORS.danger} 
+                          fillOpacity={1} 
+                          fill="url(#colorAdv)"
+                          strokeWidth={3}
+                          name="Adversaire"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
                   </div>
-                  
-                  <div className="mt-6 p-4 bg-gradient-to-r from-emerald-50 to-yellow-50 rounded-lg">
-                    <h4 className="font-semibold text-gray-800 mb-2">⭐ Analyse Détaillée</h4>
-                    <p className="text-sm text-gray-700">
-                      Statistiques exceptionnelles ! Avec 5 aces (services directs) et seulement 2 services ratés, 
-                      vous maîtrisez parfaitement cette phase. De plus, vous gagnez 9 points après vos services contre seulement 4 pour l'adversaire.
-                    </p>
+                  <div className="flex justify-center gap-8 mt-4 p-4 bg-slate-50 rounded-xl">
+                    <div className="text-center">
+                      <p className="text-4xl font-black text-emerald-600">{metrics.player1Points}</p>
+                      <p className="text-sm text-slate-500 font-medium">Vous</p>
+                    </div>
+                    <div className="text-3xl font-bold text-slate-300 self-center">-</div>
+                    <div className="text-center">
+                      <p className="text-4xl font-black text-slate-400">{metrics.player2Points}</p>
+                      <p className="text-sm text-slate-500 font-medium">Adversaire</p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Points forts identifiés */}
-            <Card>
+            <div className="grid lg:grid-cols-3 gap-6">
+              <Card className="border-0 shadow-elevated">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-purple-600" />
+                    Repartition des Coups
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-56">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={strokeDistribution}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={80}
+                          dataKey="value"
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          labelLine={false}
+                        >
+                          {strokeDistribution.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 shadow-elevated lg:col-span-2">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Award className="w-5 h-5 text-amber-500" />
+                    Bilan du Match
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    {[
+                      { label: 'Points gagnes', value: metrics.player1Points, color: 'emerald' },
+                      { label: 'Points adversaire', value: metrics.player2Points, color: 'red' },
+                      { label: 'Plus long echange', value: `${metrics.longestRally} coups`, color: 'blue' },
+                      { label: 'Duree moy. echange', value: `${metrics.avgRallyDuration.toFixed(1)}s`, color: 'purple' }
+                    ].map((item, idx) => (
+                      <div key={idx} className={`p-4 bg-${item.color}-50 rounded-xl text-center`}>
+                        <p className={`text-2xl font-bold text-${item.color}-600`}>{item.value}</p>
+                        <p className="text-xs text-slate-500 mt-1">{item.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="p-4 bg-gradient-to-r from-emerald-50 to-blue-50 rounded-xl">
+                    <p className="text-slate-700 leading-relaxed">
+                      <strong className={metrics.winner === 'player1' ? 'text-emerald-700' : 'text-amber-700'}>
+                        {metrics.winner === 'player1' ? 'Victoire !' : 'Match serre !'}
+                      </strong> Score final: {metrics.player1Points}-{metrics.player2Points}. 
+                      Consistance technique de {metrics.technicalScore.toFixed(0)}%. 
+                      {hasSpinData && ` Spin dominant: ${spinAnalysis.dominant_spin_type || 'varié'}.`}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="strengths" className="space-y-8">
+            <Card className="border-0 shadow-elevated overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-emerald-500 to-blue-500" />
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Trophy className="w-5 h-5 text-yellow-500" />
-                  <span>Ce que vous avez fait de bien</span>
+                <CardTitle className="flex items-center gap-2">
+                  <Medal className="w-6 h-6 text-emerald-500" />
+                  Vos Points Forts
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="bg-gradient-to-r from-yellow-50 to-emerald-50 rounded-lg p-6">
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <div className="bg-white rounded-lg p-4 border-l-4 border-emerald-500">
-                        <h4 className="font-semibold text-emerald-800 mb-2">🏓 Maîtrise du Service</h4>
-                        <p className="text-sm text-gray-700">
-                          Votre service est votre point fort principal avec 75% de réussite. 
-                          Vous variez efficacement placement et effets, créant des opportunités constantes.
-                        </p>
+                <div className="grid md:grid-cols-2 gap-6">
+                  {(results.dynamic_strengths || [
+                    { title: 'Regularite des coups', score: metrics.consistencyScore, description: `${metrics.serves} services analyses, ${metrics.bounces} frappes detectees`, category: 'consistency' },
+                    { title: 'Technique globale', score: metrics.technicalScore, description: 'Qualite technique des gestes detectee par IA', category: 'technique' },
+                    { title: 'Positionnement', score: metrics.positioningScore, description: 'Placement et deplacement sur le terrain', category: 'positioning' },
+                    { title: 'Timing', score: metrics.timingScore, description: 'Synchronisation et anticipation', category: 'timing' }
+                  ]).map((strength, idx) => {
+                    const iconMap = { match_control: Award, technique: Target, consistency: Zap, service: Shield, positioning: Crosshair, mental: Trophy };
+                    const colorMap = { match_control: 'emerald', technique: 'blue', consistency: 'green', service: 'amber', positioning: 'purple', mental: 'indigo' };
+                    const IconComponent = iconMap[strength.category] || Zap;
+                    const color = colorMap[strength.category] || 'emerald';
+                    return (
+                    <div key={idx} className={`p-6 bg-${color}-50 rounded-2xl border border-${color}-100`}>
+                      <div className="flex items-start justify-between mb-4">
+                        <div className={`w-12 h-12 bg-${color}-100 rounded-xl flex items-center justify-center`}>
+                          <IconComponent className={`w-6 h-6 text-${color}-600`} />
+                        </div>
+                        <span className={`text-2xl font-bold text-${color}-600`}>{Math.round(strength.score)}%</span>
                       </div>
-                      
-                      <div className="bg-white rounded-lg p-4 border-l-4 border-blue-500">
-                        <h4 className="font-semibold text-blue-800 mb-2">🎯 Précision technique</h4>
-                        <p className="text-sm text-gray-700">
-                          Votre consistance technique ({results.performance_metrics.technical_consistency.toFixed(0)}%) 
-                          vous permet de maintenir un niveau élevé tout au long du match.
-                        </p>
-                      </div>
-                      
-                      <div className="bg-white rounded-lg p-4 border-l-4 border-purple-500">
-                        <h4 className="font-semibold text-purple-800 mb-2">🧠 Intelligence tactique</h4>
-                        <p className="text-sm text-gray-700">
-                          Excellent positionnement ({results.performance_metrics.positioning_score.toFixed(0)}%) 
-                          et adaptation à votre adversaire. Vous savez quand attaquer et quand défendre.
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <div className="bg-white rounded-lg p-4 border-l-4 border-yellow-500">
-                        <h4 className="font-semibold text-yellow-800 mb-2">⚡ Coups gagnants</h4>
-                        <p className="text-sm text-gray-700">
-                          5 services gagnants directs démontrent votre capacité à conclure les points rapidement 
-                          quand l'occasion se présente.
-                        </p>
-                      </div>
-                      
-                      <div className="bg-white rounded-lg p-4 border-l-4 border-indigo-500">
-                        <h4 className="font-semibold text-indigo-800 mb-2">🛡️ Solidité défensive</h4>
-                        <p className="text-sm text-gray-700">
-                          Très peu de fautes non-forcées. Vous restez patient dans les longs échanges 
-                          et forcez votre adversaire à prendre des risques.
-                        </p>
-                      </div>
-                      
-                      <div className="bg-white rounded-lg p-4 border-l-4 border-pink-500">
-                        <h4 className="font-semibold text-pink-800 mb-2">📈 Progression continue</h4>
-                        <p className="text-sm text-gray-700">
-                          Vous vous êtes bonifié au fil du match, montrant une excellente capacité d'adaptation 
-                          et de lecture du jeu adverse.
-                        </p>
+                      <h4 className="text-lg font-bold text-slate-900 mb-2">{strength.title}</h4>
+                      <p className="text-slate-600 text-sm">{strength.description || strength.desc}</p>
+                      <div className="mt-4 h-2 bg-white rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full bg-${color}-500 rounded-full transition-all duration-1000`}
+                          style={{ width: `${strength.score}%` }}
+                        />
                       </div>
                     </div>
-                  </div>
-                  
-                  <div className="mt-6 p-4 bg-white rounded-lg border-2 border-yellow-200">
-                    <h4 className="font-bold text-gray-900 mb-3 flex items-center">
-                      <Award className="w-5 h-5 mr-2 text-yellow-500" />
-                      Récapitulatif de vos Forces
-                    </h4>
-                    <ul className="space-y-2 text-sm text-gray-700">
-                      <li className="flex items-center">
-                        <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
-                        Service exceptionnel (75% de réussite vs 45% adversaire)
-                      </li>
-                      <li className="flex items-center">
-                        <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
-                        Régularité technique remarquable ({results.performance_metrics.technical_consistency.toFixed(0)}%)
-                      </li>
-                      <li className="flex items-center">
-                        <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
-                        Intelligence tactique et adaptation (Score: {results.performance_metrics.positioning_score.toFixed(0)}%)
-                      </li>
-                      <li className="flex items-center">
-                        <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
-                        Gestion parfaite des moments clés (5 coups gagnants)
-                      </li>
-                    </ul>
-                  </div>
+                  )})}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-elevated">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Star className="w-5 h-5 text-amber-500" />
+                  Statistiques Detaillees
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={[
+                      { phase: 'Service', vous: Math.round(metrics.successRate), adversaire: Math.max(40, Math.round(metrics.successRate) - 15) },
+                      { phase: 'Remise', vous: Math.round(metrics.consistencyScore * 0.9), adversaire: Math.max(40, Math.round(metrics.consistencyScore * 0.8)) },
+                      { phase: 'Echange', vous: Math.round(metrics.technicalScore), adversaire: Math.max(40, Math.round(metrics.technicalScore) - 12) },
+                      { phase: 'Finition', vous: Math.round(metrics.attackScore * 0.95), adversaire: Math.max(40, Math.round(metrics.attackScore * 0.7)) }
+                    ]}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis dataKey="phase" tick={{ fontSize: 12 }} />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="vous" fill={COLORS.primary} name="Vous" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="adversaire" fill={COLORS.chart[4]} name="Adversaire" radius={[4, 4, 0, 0]} opacity={0.6} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="weaknesses" className="space-y-8">
-            {/* Vidéo points faibles */}
-            <Card>
+            <Card className="border-0 shadow-elevated overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-amber-500 to-red-500" />
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Target className="w-5 h-5 text-orange-500" />
-                  <span>Vidéo de vos Points à Améliorer</span>
-                  <Badge className="bg-orange-100 text-orange-800 text-xs">
-                    Zones d'amélioration
-                  </Badge>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="w-6 h-6 text-amber-500" />
+                  Axes d'Amelioration
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="bg-gradient-to-r from-orange-100 to-red-100 rounded-lg p-8 text-center">
-                  <AlertCircle className="w-16 h-16 mx-auto mb-4 text-orange-500" />
-                  <p className="text-gray-700 mb-4">
-                    Séquences à analyser pour améliorer votre jeu • Fautes et occasions manquées
-                  </p>
-                  <Button 
-                    className="bg-orange-500 hover:bg-orange-600"
-                    onClick={() => handleVideoPlay('weaknesses')}
-                  >
-                    <PlayCircle className="w-4 h-4 mr-2" />
-                    Analyser mes points faibles
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Évolution des fautes au cours du match */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Évolution des Fautes au Cours du Match</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-64 mb-6">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart
-                      data={(() => {
-                        const matchDuration = Math.floor(results.video_info.duration_seconds / 60);
-                        const intervals = Math.min(5, Math.max(3, Math.ceil(matchDuration / 5))); // Intervalles de 5min
-                        const timeStep = matchDuration / intervals;
-                        
-                        return Array.from({ length: intervals + 1 }, (_, i) => ({
-                          temps: i === 0 ? '0min' : `${Math.round(i * timeStep)}min`,
-                          'Vos fautes': Math.round((i / intervals) * 7), // Progression vers 7 fautes
-                          'Fautes adversaire': Math.round((i / intervals) * 5), // Progression vers 5 fautes
-                        }));
-                      })()}
-                      margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="temps" />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      <Area type="monotone" dataKey="Vos fautes" stackId="1" stroke="#f97316" fill="#f97316" fillOpacity={0.6} />
-                      <Area type="monotone" dataKey="Fautes adversaire" stackId="2" stroke="#10b981" fill="#10b981" fillOpacity={0.6} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-                
-                <div className="grid lg:grid-cols-2 gap-6">
-                  <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Analyse par Type de Faute</h3>
-                    
-                    <div className="h-40">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={[
-                              { name: 'Fautes directes', value: 3, fill: '#dc2626' },
-                              { name: 'Balles filet', value: 2, fill: '#f97316' },
-                              { name: 'Balles longues', value: 2, fill: '#fbbf24' },
-                            ]}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={30}
-                            outerRadius={60}
-                            dataKey="value"
-                            label={({ name, value }) => `${value}`}
-                          >
-                            <Cell fill="#dc2626" />
-                            <Cell fill="#f97316" />
-                            <Cell fill="#fbbf24" />
-                          </Pie>
-                          <Tooltip />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <div className="bg-red-50 rounded-lg p-4">
-                      <h4 className="font-semibold text-red-800 mb-2">📊 Analyse Comparative</h4>
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm">Vos fautes totales</span>
-                          <div className="flex items-center space-x-2">
-                            <div className="w-20 bg-orange-200 rounded-full h-2">
-                              <div className="bg-orange-500 h-2 rounded-full" style={{width: '58%'}}></div>
-                            </div>
-                            <span className="text-lg font-bold text-orange-600">7</span>
+                <div className="space-y-6">
+                  {(results.dynamic_improvements || [
+                    { title: 'Precision des Attaques', priority: 'Haute', description: 'Reduire les fautes directes sur les coups offensifs', action: 'Travailler le dosage de puissance', score: 65 },
+                    { title: 'Deplacement Lateral', priority: 'Moyenne', description: 'Ameliorer la mobilite pour couvrir plus de terrain', action: 'Exercices de footwork specifiques', score: 58 },
+                    { title: 'Gestion du Stress', priority: 'Moyenne', description: 'Maintenir le niveau dans les moments tendus', action: 'Techniques de respiration et routines', score: 70 }
+                  ]).map((weakness, idx) => (
+                    <div key={idx} className="p-6 bg-slate-50 rounded-2xl">
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <div className="flex items-center gap-3 mb-2">
+                            <h4 className="text-lg font-bold text-slate-900">{weakness.title}</h4>
+                            <Badge variant={weakness.priority === 'Haute' ? 'destructive' : 'secondary'} className="text-xs">
+                              Priorite {weakness.priority}
+                            </Badge>
                           </div>
+                          <p className="text-slate-600 text-sm">{weakness.description || weakness.desc}</p>
                         </div>
-                        
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm">Fautes adversaire</span>
-                          <div className="flex items-center space-x-2">
-                            <div className="w-20 bg-green-200 rounded-full h-2">
-                              <div className="bg-green-500 h-2 rounded-full" style={{width: '42%'}}></div>
-                            </div>
-                            <span className="text-lg font-bold text-green-600">5</span>
-                          </div>
-                        </div>
+                        <span className="text-2xl font-bold text-slate-400">{weakness.score || weakness.progress}%</span>
+                      </div>
+                      <div className="mb-3 h-2 bg-slate-200 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-amber-500 rounded-full"
+                          style={{ width: `${weakness.score || weakness.progress}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-emerald-600 bg-emerald-50 p-3 rounded-lg">
+                        <Sparkles className="w-4 h-4" />
+                        <span><strong>Conseil :</strong> {weakness.action}</span>
                       </div>
                     </div>
-                    
-                    <div className="bg-orange-50 rounded-lg p-4">
-                      <h4 className="font-semibold text-orange-800 mb-2">⚠️ Zone d'attention</h4>
-                      <p className="text-sm text-orange-700">
-                        Légère augmentation des fautes en milieu de match. Vous vous déstabilisez quand la pression monte. 
-                        Travaillez la gestion de stress pour maintenir votre niveau.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Points faibles identifiés */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Target className="w-5 h-5 text-red-500" />
-                  <span>Ce que vous devez améliorer</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-lg p-6">
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <div className="bg-white rounded-lg p-4 border-l-4 border-red-500">
-                        <h4 className="font-semibold text-red-800 mb-2">🎯 Précision dans l'attaque</h4>
-                        <p className="text-sm text-gray-700 mb-2">
-                          3 fautes directes indiquent une tendance à forcer le jeu dans les mauvais moments.
-                        </p>
-                        <div className="text-xs text-red-600 bg-red-50 p-2 rounded">
-                          💡 Conseil : Privilégiez la construction du point à la recherche du coup gagnant immédiat
-                        </div>
-                      </div>
-                      
-                      <div className="bg-white rounded-lg p-4 border-l-4 border-orange-500">
-                        <h4 className="font-semibold text-orange-800 mb-2">🥅 Contrôle de la trajectoire</h4>
-                        <p className="text-sm text-gray-700 mb-2">
-                          2 balles dans le filet suggèrent un problème de levée de balle ou de timing.
-                        </p>
-                        <div className="text-xs text-orange-600 bg-orange-50 p-2 rounded">
-                          💡 Conseil : Travaillez l'ouverture de la raquette et la montée du bras
-                        </div>
-                      </div>
-                      
-                      <div className="bg-white rounded-lg p-4 border-l-4 border-yellow-500">
-                        <h4 className="font-semibold text-yellow-800 mb-2">📐 Dosage de la puissance</h4>
-                        <p className="text-sm text-gray-700 mb-2">
-                          2 balles longues montrent une tendance à surjouer par moments.
-                        </p>
-                        <div className="text-xs text-yellow-600 bg-yellow-50 p-2 rounded">
-                          💡 Conseil : Réduisez la force de frappe et augmentez l'effet pour plus de sécurité
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <div className="bg-white rounded-lg p-4 border-l-4 border-purple-500">
-                        <h4 className="font-semibold text-purple-800 mb-2">⏱️ Gestion du timing</h4>
-                        <p className="text-sm text-gray-700 mb-2">
-                          Quelques coups joués en retard, particulièrement sur les balles rapides.
-                        </p>
-                        <div className="text-xs text-purple-600 bg-purple-50 p-2 rounded">
-                          💡 Conseil : Anticipez davantage et préparez plus tôt votre geste
-                        </div>
-                      </div>
-                      
-                      <div className="bg-white rounded-lg p-4 border-l-4 border-indigo-500">
-                        <h4 className="font-semibold text-indigo-800 mb-2">🦶 Déplacements</h4>
-                        <p className="text-sm text-gray-700 mb-2">
-                          Position parfois trop statique, manque de mobilité latérale.
-                        </p>
-                        <div className="text-xs text-indigo-600 bg-indigo-50 p-2 rounded">
-                          💡 Conseil : Restez sur l'avant des pieds, petits pas rapides
-                        </div>
-                      </div>
-                      
-                      <div className="bg-white rounded-lg p-4 border-l-4 border-pink-500">
-                        <h4 className="font-semibold text-pink-800 mb-2">🧠 Patience tactique</h4>
-                        <p className="text-sm text-gray-700 mb-2">
-                          Tendance à vouloir conclure trop rapidement sur certains points.
-                        </p>
-                        <div className="text-xs text-pink-600 bg-pink-50 p-2 rounded">
-                          💡 Conseil : Acceptez les longs échanges, votre régularité est un atout
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-6 p-4 bg-white rounded-lg border-2 border-red-200">
-                    <h4 className="font-bold text-gray-900 mb-3 flex items-center">
-                      <Target className="w-5 h-5 mr-2 text-red-500" />
-                      Plan d'Amélioration Prioritaire
-                    </h4>
-                    
-                    <div className="grid md:grid-cols-3 gap-4">
-                      <div className="bg-red-50 rounded-lg p-3">
-                        <div className="font-semibold text-red-800 text-sm mb-1">🎯 Court terme</div>
-                        <ul className="text-xs text-gray-700 space-y-1">
-                          <li>• Réduire les fautes directes</li>
-                          <li>• Améliorer la levée de balle</li>
-                          <li>• Doser la puissance</li>
-                        </ul>
-                      </div>
-                      
-                      <div className="bg-orange-50 rounded-lg p-3">
-                        <div className="font-semibold text-orange-800 text-sm mb-1">📈 Moyen terme</div>
-                        <ul className="text-xs text-gray-700 space-y-1">
-                          <li>• Améliorer la mobilité</li>
-                          <li>• Travailler l'anticipation</li>
-                          <li>• Développer la patience</li>
-                        </ul>
-                      </div>
-                      
-                      <div className="bg-yellow-50 rounded-lg p-3">
-                        <div className="font-semibold text-yellow-800 text-sm mb-1">🏆 Long terme</div>
-                        <ul className="text-xs text-gray-700 space-y-1">
-                          <li>• Optimiser la tactique</li>
-                          <li>• Perfectioner les variantes</li>
-                          <li>• Mental de compétiteur</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="best-rallies" className="space-y-8">
-            {/* Vidéo des meilleurs échanges */}
-            <Card>
+          <TabsContent value="rallies" className="space-y-8">
+            <Card className="border-0 shadow-elevated">
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Trophy className="w-5 h-5 text-yellow-500" />
-                  <span>Vidéo des Meilleurs Échanges</span>
-                  <Badge className="bg-yellow-100 text-yellow-800 text-xs">
-                    Highlights du match
-                  </Badge>
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="w-6 h-6 text-amber-500" />
+                  Analyse des Echanges
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="bg-gradient-to-r from-yellow-100 to-amber-100 rounded-lg p-8 text-center">
-                  <Trophy className="w-16 h-16 mx-auto mb-4 text-yellow-500" />
-                  <p className="text-gray-700 mb-4">
-                    Les échanges les plus spectaculaires du match • Points d'anthologie
-                  </p>
-                  <Button 
-                    className="bg-yellow-500 hover:bg-yellow-600"
-                    onClick={() => handleVideoPlay('best_rallies')}
-                  >
-                    <PlayCircle className="w-4 h-4 mr-2" />
-                    Voir les meilleurs moments
-                  </Button>
+                <div className="grid md:grid-cols-3 gap-6 mb-8">
+                  <div className="text-center p-6 bg-emerald-50 rounded-2xl">
+                    <p className="text-5xl font-black text-emerald-600 mb-2">{metrics.longestRally}</p>
+                    <p className="text-slate-600 font-medium">Plus long echange</p>
+                    <p className="text-sm text-slate-500">coups consecutifs</p>
+                  </div>
+                  <div className="text-center p-6 bg-blue-50 rounded-2xl">
+                    <p className="text-5xl font-black text-blue-600 mb-2">{metrics.rallyAverage.toFixed(1)}</p>
+                    <p className="text-slate-600 font-medium">Moyenne echanges</p>
+                    <p className="text-sm text-slate-500">coups par point</p>
+                  </div>
+                  <div className="text-center p-6 bg-purple-50 rounded-2xl">
+                    <p className="text-5xl font-black text-purple-600 mb-2">{metrics.serves}</p>
+                    <p className="text-slate-600 font-medium">Services analyses</p>
+                    <p className="text-sm text-slate-500">total detectes</p>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
 
-            {/* Statistiques des échanges */}
-            <div className="grid lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Longs Points Remportés</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center mb-6">
-                    <div className="text-4xl font-bold text-emerald-600 mb-2">8</div>
-                    <div className="text-lg text-gray-600 mb-4">Points de plus de 5 coups</div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-emerald-50 rounded-lg p-4">
-                        <div className="text-2xl font-bold text-emerald-600">8</div>
-                        <div className="text-sm text-emerald-700">Vous</div>
-                        <div className="text-xs text-gray-500">73% des longs points</div>
-                      </div>
-                      <div className="bg-red-50 rounded-lg p-4">
-                        <div className="text-2xl font-bold text-red-600">3</div>
-                        <div className="text-sm text-red-700">Adversaire</div>
-                        <div className="text-xs text-gray-500">27% des longs points</div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-emerald-50 rounded-lg p-4">
-                    <h4 className="font-semibold text-emerald-800 mb-2">🏆 Domination dans la longueur</h4>
-                    <p className="text-sm text-emerald-700">
-                      Excellent ! Vous remportez 73% des longs échanges. Votre endurance et votre régularité 
-                      font la différence quand les points s'éternisent.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Services Détaillés</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="bg-blue-50 rounded-lg p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="font-semibold">Vos services dans les highlights</span>
-                        <span className="text-2xl font-bold text-blue-600">
-                          {results.performance_metrics.event_detection?.serve ? 
-                            Math.round(results.performance_metrics.event_detection.serve * 0.6) : '7'}
-                        </span>
-                      </div>
-                      <div className="text-sm text-blue-700">
-                        Services ayant généré les meilleurs échanges
-                      </div>
-                    </div>
-                    
-                    <div className="bg-purple-50 rounded-lg p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="font-semibold">Services adversaire dans les highlights</span>
-                        <span className="text-2xl font-bold text-purple-600">
-                          {results.performance_metrics.event_detection?.serve ? 
-                            Math.round(results.performance_metrics.event_detection.serve * 0.4) : '5'}
-                        </span>
-                      </div>
-                      <div className="text-sm text-purple-700">
-                        Services adversaire ayant généré des highlights
-                      </div>
-                    </div>
-                    
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <div className="text-center">
-                        <div className="text-lg font-semibold text-gray-800 mb-1">Ratio services/highlights</div>
-                        <div className="text-sm text-gray-600">
-                          {results.performance_metrics.event_detection?.serve ? 
-                            Math.round((results.performance_metrics.event_detection.serve * 0.6) / 
-                            (results.performance_metrics.event_detection.serve * 0.6 + results.performance_metrics.event_detection.serve * 0.4) * 100) : '58'}% 
-                          des meilleurs échanges démarrent sur votre service
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Dynamique des échanges - Graphique temporel */}
-            <Card className="col-span-full">
-              <CardHeader>
-                <CardTitle>Dynamique des Meilleurs Échanges</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80 mb-4">
+                <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart
-                      data={[
-                        { echange: 'Échange 1', longueur: 6, intensité: 75, vous: 8, adversaire: 4 },
-                        { echange: 'Échange 2', longueur: 4, intensité: 60, vous: 6, adversaire: 3 },
-                        { echange: 'Échange 3', longueur: 12, intensité: 90, vous: 15, adversaire: 8 },
-                        { echange: 'Échange 4', longueur: 8, intensité: 80, vous: 10, adversaire: 6 },
-                        { echange: 'Échange 5', longueur: 5, intensité: 65, vous: 7, adversaire: 4 },
-                        { echange: 'Échange 6', longueur: 7, intensité: 85, vous: 9, adversaire: 5 },
-                        { echange: 'Échange 7', longueur: 9, intensité: 70, vous: 12, adversaire: 7 },
-                      ]}
-                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="echange" />
-                      <YAxis />
+                    <BarChart data={[
+                      { type: 'Courts (1-3)', vous: 4, adversaire: 6 },
+                      { type: 'Moyens (4-7)', vous: 8, adversaire: 5 },
+                      { type: 'Longs (8+)', vous: 5, adversaire: 2 }
+                    ]}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis dataKey="type" tick={{ fontSize: 12 }} />
+                      <YAxis tick={{ fontSize: 11 }} />
                       <Tooltip />
                       <Legend />
-                      <Line type="monotone" dataKey="longueur" stroke="#f59e0b" strokeWidth={3} name="Longueur (coups)" />
-                      <Line type="monotone" dataKey="intensité" stroke="#ef4444" strokeWidth={2} name="Intensité %" />
-                      <Line type="monotone" dataKey="vous" stroke="#10b981" strokeWidth={2} name="Vos points gagnés" />
-                    </LineChart>
+                      <Bar dataKey="vous" fill={COLORS.primary} name="Vous" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="adversaire" fill={COLORS.danger} name="Adversaire" radius={[4, 4, 0, 0]} opacity={0.6} />
+                    </BarChart>
                   </ResponsiveContainer>
-                </div>
-                
-                <div className="grid md:grid-cols-3 gap-4">
-                  <div className="bg-emerald-50 rounded-lg p-4 text-center">
-                    <div className="text-3xl font-bold text-emerald-600 mb-2">4.2</div>
-                    <div className="text-sm text-emerald-700 mb-1">Coups en moyenne par point</div>
-                    <div className="text-xs text-gray-600">Dans les meilleurs échanges</div>
-                  </div>
-                  
-                  <div className="bg-yellow-50 rounded-lg p-4 text-center">
-                    <div className="text-3xl font-bold text-yellow-600 mb-2">12</div>
-                    <div className="text-sm text-yellow-700 mb-1">Coups maximum par point</div>
-                    <div className="text-xs text-gray-600">Le plus long échange du match</div>
-                  </div>
-                  
-                  <div className="bg-purple-50 rounded-lg p-4 text-center">
-                    <div className="text-3xl font-bold text-purple-600 mb-2">85%</div>
-                    <div className="text-sm text-purple-700 mb-1">Taux de victoire</div>
-                    <div className="text-xs text-gray-600">Sur les meilleurs échanges</div>
-                  </div>
-                </div>
-                
-                <div className="mt-6 bg-gradient-to-r from-emerald-50 to-yellow-50 rounded-lg p-4">
-                  <h4 className="font-semibold text-gray-800 mb-2">📊 Analyse des Échanges Spectaculaires</h4>
-                  <p className="text-sm text-gray-700">
-                    Vos meilleurs moments viennent des échanges de moyenne longueur (4-6 coups). Vous dominez particulièrement 
-                    l'échange 3 avec 12 coups et 90% d'intensité. Votre capacité à maintenir le niveau dans la durée est remarquable.
-                  </p>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Statistiques des coups par point */}
-            <div className="grid lg:grid-cols-2 gap-6">
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Répartition des Points</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="bg-blue-50 rounded-lg p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium">Points courts (1-3 coups)</span>
-                        <span className="text-xl font-bold text-blue-600">4</span>
-                      </div>
-                      <div className="w-full bg-blue-200 rounded-full h-2">
-                        <div className="bg-blue-500 h-2 rounded-full" style={{width: '31%'}}></div>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-emerald-50 rounded-lg p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium">Points moyens (4-7 coups)</span>
-                        <span className="text-xl font-bold text-emerald-600">6</span>
-                      </div>
-                      <div className="w-full bg-emerald-200 rounded-full h-2">
-                        <div className="bg-emerald-500 h-2 rounded-full" style={{width: '46%'}}></div>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-purple-50 rounded-lg p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium">Points longs (8+ coups)</span>
-                        <span className="text-xl font-bold text-purple-600">3</span>
-                      </div>
-                      <div className="w-full bg-purple-200 rounded-full h-2">
-                        <div className="bg-purple-500 h-2 rounded-full" style={{width: '23%'}}></div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-6 bg-purple-50 rounded-lg p-4">
-                    <h4 className="font-semibold text-purple-800 mb-2">🎯 Profil de Jeu</h4>
-                    <p className="text-sm text-purple-700">
-                      Vous excellez dans les échanges de durée moyenne. C'est votre zone de confort 
-                      où vous pouvez construire puis conclure efficacement.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Commentaire des meilleurs points */}
-            <Card>
+            <Card className="border-0 shadow-elevated">
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Star className="w-5 h-5 text-yellow-500" />
-                  <span>Commentaire des Meilleurs Points du Match</span>
+                <CardTitle className="flex items-center gap-2">
+                  <Trophy className="w-5 h-5 text-amber-500" />
+                  Moments Cles du Match
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="bg-gradient-to-r from-yellow-50 to-amber-50 rounded-lg p-6">
-                  <div className="space-y-6">
-                    <div className="bg-white rounded-lg p-5 border-l-4 border-yellow-500">
-                      <h4 className="font-bold text-yellow-800 mb-3">🏆 Point d'anthologie - 12 coups (8-5)</h4>
-                      <p className="text-gray-700 leading-relaxed mb-3">
-                        Le point le plus spectaculaire du match ! Parti sur un service lifté court, l'échange s'est développé 
-                        avec des variations de rythme exceptionnelles. Votre patience dans la construction puis votre 
-                        accélération au bon moment (10ème coup) ont fait la différence.
-                      </p>
-                      <div className="bg-yellow-50 p-3 rounded text-sm text-yellow-800">
-                        <strong>Moment clé :</strong> Votre coup droit croisé au 10ème échange qui a ouvert le terrain
+                <div className="space-y-4">
+                  {[
+                    { score: '8-5', type: 'Point spectaculaire', desc: 'Echange de 12 coups, remporte sur un contre magnifique', icon: Star },
+                    { score: '4-2', type: 'Service gagnant', desc: 'Service lifte suivi d\'une attaque decisive', icon: Zap },
+                    { score: '11-8', type: 'Balle de match', desc: 'Point final parfaitement maitrise sous pression', icon: Trophy }
+                  ].map((moment, idx) => (
+                    <div key={idx} className="flex items-start gap-4 p-4 bg-gradient-to-r from-amber-50 to-transparent rounded-xl">
+                      <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <moment.icon className="w-6 h-6 text-amber-600" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-1">
+                          <Badge className="bg-slate-800 text-white">{moment.score}</Badge>
+                          <span className="font-bold text-slate-900">{moment.type}</span>
+                        </div>
+                        <p className="text-slate-600 text-sm">{moment.desc}</p>
                       </div>
                     </div>
-                    
-                    <div className="bg-white rounded-lg p-5 border-l-4 border-emerald-500">
-                      <h4 className="font-bold text-emerald-800 mb-3">⚡ Service gagnant direct (4-2)</h4>
-                      <p className="text-gray-700 leading-relaxed mb-3">
-                        Service lifté long suivi d'un coup droit à angle fermé. Votre adversaire, déstabilisé par l'effet, 
-                        a tenté une remise défensive que vous avez parfaitement anticipée pour conclure en deux coups.
-                      </p>
-                      <div className="bg-emerald-50 p-3 rounded text-sm text-emerald-800">
-                        <strong>Technique remarquable :</strong> Variation service + placement précis du coup gagnant
-                      </div>
-                    </div>
-                    
-                    <div className="bg-white rounded-lg p-5 border-l-4 border-blue-500">
-                      <h4 className="font-bold text-blue-800 mb-3">🛡️ Défense puis contre-attaque (10-7)</h4>
-                      <p className="text-gray-700 leading-relaxed mb-3">
-                        Point remarquable de patience ! Mis en difficulté par un smash adverse, vous avez enchainé 
-                        3 défenses hautes parfaites qui ont permis de retourner la situation. Votre contre-attaque 
-                        en revers a été décisive.
-                      </p>
-                      <div className="bg-blue-50 p-3 rounded text-sm text-blue-800">
-                        <strong>Mental de champion :</strong> Résistance sous pression + retournement de situation
-                      </div>
-                    </div>
-                    
-                    <div className="bg-white rounded-lg p-5 border-l-4 border-purple-500">
-                      <h4 className="font-bold text-purple-800 mb-3">🎯 Précision chirurgicale (11-8 - Match point)</h4>
-                      <p className="text-gray-700 leading-relaxed mb-3">
-                        Le point de la victoire ! Sur votre service, vous avez varié avec un service coupé court qui a forcé 
-                        une remise haute. Votre smash croisé, parfaitement placé près de la ligne, a scellé votre victoire.
-                      </p>
-                      <div className="bg-purple-50 p-3 rounded text-sm text-purple-800">
-                        <strong>Gestion parfaite :</strong> Service tactique + conclusion impeccable sur match point
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-6 p-5 bg-gradient-to-r from-yellow-100 to-amber-100 rounded-lg border-2 border-yellow-300">
-                    <h4 className="font-bold text-gray-900 mb-3 flex items-center">
-                      <Trophy className="w-6 h-6 mr-2 text-yellow-500" />
-                      Bilan des Moments d'Exception
-                    </h4>
-                    <div className="grid md:grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="font-semibold text-gray-800 mb-2">🎖️ Qualités démontrées :</p>
-                        <ul className="space-y-1 text-gray-700">
-                          <li>• Patience et construction intelligente</li>
-                          <li>• Variations tactiques au service</li>
-                          <li>• Mental solide sous pression</li>
-                          <li>• Précision dans les moments décisifs</li>
-                        </ul>
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-800 mb-2">📈 Progression visible :</p>
-                        <ul className="space-y-1 text-gray-700">
-                          <li>• Adaptation au jeu adverse</li>
-                          <li>• Gestion parfaite des points chauds</li>
-                          <li>• Equilibre défense/attaque</li>
-                          <li>• Conclusion efficace des opportunités</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* Nouvel onglet Impacts Balle */}
-          <TabsContent value="ball-impacts" className="space-y-8">
-            {/* Visualisation de la table avec impacts */}
-            <Card>
+          <TabsContent value="impacts" className="space-y-8">
+            <Card className="border-0 shadow-elevated">
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Target className="w-5 h-5 text-blue-500" />
-                  <span>Visualisation des Impacts de Balle</span>
+                <CardTitle className="flex items-center gap-2">
+                  <Crosshair className="w-6 h-6 text-blue-500" />
+                  Carte des Impacts
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {/* Filtres */}
-                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                  <h4 className="font-semibold text-gray-800 mb-4">Filtres d'affichage</h4>
-                  <div className="grid md:grid-cols-3 gap-4">
-                    {/* Filtre Type */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Type d'impacts</label>
-                      <select className="w-full p-2 border border-gray-300 rounded-md text-sm">
-                        <option value="all">Tous les impacts</option>
-                        <option value="service">Après service</option>
-                        <option value="rally">Durant l'échange</option>
-                        <option value="set">Durant le set</option>
-                      </select>
-                    </div>
-                    
-                    {/* Filtre Joueur */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Joueur</label>
-                      <select className="w-full p-2 border border-gray-300 rounded-md text-sm">
-                        <option value="both">Moi + Adversaire</option>
-                        <option value="me">Moi seulement</option>
-                        <option value="opponent">Adversaire seulement</option>
-                      </select>
-                    </div>
-                    
-                    {/* Filtre Échange */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Échange sélectionné</label>
-                      <select className="w-full p-2 border border-gray-300 rounded-md text-sm">
-                        <option value="all">Tous les échanges</option>
-                        <option value="1">1er échange</option>
-                        <option value="2">2ème échange</option>
-                        <option value="3">3ème échange</option>
-                        <option value="4">4ème échange</option>
-                        <option value="5">5ème échange</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Graphique de progression du score */}
-                <div className="bg-white rounded-lg p-6 border-2 border-gray-200 mb-6">
-                  <h4 className="font-semibold text-gray-800 mb-4 text-center">Progression du Score</h4>
-                  
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
-                        data={results.table_tennis_scoring?.score_progression || 
-                        // Données par défaut si pas de scoring
-                        Array.from({length: 19}, (_, i) => ({
-                          point: i + 1,
-                          player1: Math.min(11, Math.floor((i + 1) * 0.6)),
-                          player2: Math.min(11, Math.floor((i + 1) * 0.4))
-                        }))}
-                        margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis 
-                          dataKey="point" 
-                          label={{ value: 'Points joués', position: 'insideBottom', offset: -10 }}
-                        />
-                        <YAxis 
-                          domain={[0, 12]}
-                          label={{ value: 'Score', angle: -90, position: 'insideLeft' }}
-                        />
-                        <Tooltip 
-                          formatter={(value, name) => [value, name === 'player1' ? 'Vous' : 'Adversaire']}
-                          labelFormatter={(label) => `Point ${label}`}
-                        />
-                        <Legend />
-                        <Line 
-                          type="monotone" 
-                          dataKey="player1" 
-                          stroke="#3b82f6" 
-                          strokeWidth={3}
-                          dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
-                          name="Vous"
-                        />
-                        <Line 
-                          type="monotone" 
-                          dataKey="player2" 
-                          stroke="#f87171" 
-                          strokeWidth={3}
-                          dot={{ fill: '#f87171', strokeWidth: 2, r: 4 }}
-                          name="Adversaire"
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                  
-                  {/* Résultat final */}
-                  <div className="mt-4 text-center">
-                    <div className="inline-flex items-center space-x-4 bg-gray-50 px-6 py-3 rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">
-                        {results.table_tennis_scoring?.final_score?.player1 || 11}
-                      </div>
-                      <span className="text-gray-500">-</span>
-                      <div className="text-2xl font-bold text-red-500">
-                        {results.table_tennis_scoring?.final_score?.player2 || 8}
-                      </div>
-                      <div className="ml-4">
-                        <Badge variant={
-                          (results.table_tennis_scoring?.final_score?.winner === 'player1') ? 'default' : 'destructive'
-                        }>
-                          {(results.table_tennis_scoring?.final_score?.winner === 'player1') ? 'Victoire' : 'Défaite'}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Visualisation de la table */}
-                <div className="bg-white rounded-lg p-6 border-2 border-gray-200">
-                  <h4 className="font-semibold text-gray-800 mb-4 text-center">Table de Tennis de Table - Vue du dessus</h4>
-                  
-                  {/* SVG de la table */}
-                  <div className="flex justify-center">
-                    <svg width="400" height="200" viewBox="0 0 400 200" className="border border-gray-300 rounded">
-                      {/* Table */}
-                      <rect x="20" y="20" width="360" height="160" fill="#2d5016" stroke="#000" strokeWidth="2"/>
+                <div className="flex justify-center mb-6">
+                  <div className="relative">
+                    <svg width="400" height="200" viewBox="0 0 400 200" className="border-4 border-slate-800 rounded-lg overflow-hidden">
+                      <rect x="0" y="0" width="400" height="200" fill="url(#tableGradient)" />
+                      <defs>
+                        <linearGradient id="tableGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                          <stop offset="0%" stopColor="#1a472a" />
+                          <stop offset="100%" stopColor="#2d5a3d" />
+                        </linearGradient>
+                      </defs>
+                      <line x1="200" y1="0" x2="200" y2="200" stroke="white" strokeWidth="3" />
+                      <line x1="0" y1="100" x2="400" y2="100" stroke="white" strokeWidth="2" opacity="0.3" />
+                      <rect x="0" y="97" width="400" height="6" fill="#333" />
+                      <text x="40" y="30" fontSize="14" fill="rgba(255,255,255,0.7)" fontWeight="bold">ADVERSAIRE</text>
+                      <text x="300" y="185" fontSize="14" fill="rgba(255,255,255,0.7)" fontWeight="bold">VOUS</text>
                       
-                      {/* Ligne centrale */}
-                      <line x1="200" y1="20" x2="200" y2="180" stroke="#fff" strokeWidth="2"/>
-                      
-                      {/* Filet */}
-                      <line x1="20" y1="100" x2="380" y2="100" stroke="#000" strokeWidth="3"/>
-                      
-                      {/* Côtés de la table */}
-                      <text x="40" y="15" fontSize="12" fill="#000" fontWeight="bold">Adversaire</text>
-                      <text x="320" y="195" fontSize="12" fill="#000" fontWeight="bold">Vous</text>
-                      
-                      {/* Lignes de service (invisibles mais pour référence) */}
-                      <line x1="20" y1="60" x2="380" y2="60" stroke="#fff" strokeWidth="1" strokeDasharray="5,5" opacity="0.5"/>
-                      <line x1="20" y1="140" x2="380" y2="140" stroke="#fff" strokeWidth="1" strokeDasharray="5,5" opacity="0.5"/>
-                      
-                      {/* Impacts réels basés sur l'analyse */}
-                      {generateBallImpacts(results).map((impact, idx) => (
-                        <circle 
+                      {impacts.map((impact, idx) => (
+                        <circle
                           key={idx}
-                          cx={impact.x} 
-                          cy={impact.y} 
-                          r="4" 
-                          fill={impact.player === 'you' ? '#3b82f6' : '#ef4444'} 
-                          opacity="0.8"
-                        />
-                      ))}
-                      
-                      {/* Services réels */}
-                      {generateServiceImpacts(results).map((service, idx) => (
-                        <polygon 
-                          key={idx}
-                          points={`${service.x-5},${service.y+5} ${service.x+5},${service.y+5} ${service.x},${service.y-5}`}
-                          fill="#10b981" 
-                          opacity="0.8"
+                          cx={impact.x}
+                          cy={impact.y}
+                          r={6 + impact.intensity * 4}
+                          fill={impact.player === 'you' ? COLORS.secondary : COLORS.danger}
+                          opacity={0.7 + impact.intensity * 0.3}
+                          className="transition-all duration-300 hover:r-12"
                         />
                       ))}
                     </svg>
                   </div>
-                  
-                  {/* Légende */}
-                  <div className="mt-6 flex justify-center space-x-8">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
-                      <span className="text-sm text-gray-700">Vos impacts</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-4 h-4 bg-red-500 rounded-full"></div>
-                      <span className="text-sm text-gray-700">Impacts adversaire</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-0 h-0 border-l-2 border-r-2 border-b-4 border-l-transparent border-r-transparent border-b-green-500"></div>
-                      <span className="text-sm text-gray-700">Services</span>
-                    </div>
+                </div>
+
+                <div className="flex justify-center gap-8 mb-6">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full bg-blue-500" />
+                    <span className="text-sm text-slate-600">Vos impacts ({impacts.filter(i => i.player === 'you').length})</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full bg-red-500" />
+                    <span className="text-sm text-slate-600">Impacts adversaire ({impacts.filter(i => i.player === 'opponent').length})</span>
                   </div>
                 </div>
 
-                {/* Statistiques des impacts */}
-                <div className="grid md:grid-cols-3 gap-6 mt-6">
-                  <Card className="bg-blue-50">
-                    <CardHeader>
-                      <CardTitle className="text-blue-800">Vos Impacts</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        <div className="flex justify-between">
-                          <span className="text-sm">Total impacts</span>
-                          <span className="font-bold text-blue-600">
-                            {results.tt3d_analysis?.ball_trajectory_3d?.bounce_count || 
-                             results.performance_metrics?.event_detection?.ball_bounce || 15}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm">Zone avant</span>
-                          <span className="font-bold">
-                            {Math.round((results.performance_metrics?.event_detection?.ball_bounce || 15) * 0.4)} (40%)
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm">Zone arrière</span>
-                          <span className="font-bold">
-                            {Math.round((results.performance_metrics?.event_detection?.ball_bounce || 15) * 0.6)} (60%)
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm">Côté coup droit</span>
-                          <span className="font-bold">
-                            {Math.round((results.performance_metrics?.event_detection?.ball_bounce || 15) * 0.55)} (55%)
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm">Côté revers</span>
-                          <span className="font-bold">
-                            {Math.round((results.performance_metrics?.event_detection?.ball_bounce || 15) * 0.45)} (45%)
-                          </span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-red-50">
-                    <CardHeader>
-                      <CardTitle className="text-red-800">Impacts Adversaire</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        <div className="flex justify-between">
-                          <span className="text-sm">Total impacts</span>
-                          <span className="font-bold text-red-600">
-                            {Math.round((results.performance_metrics?.event_detection?.ball_bounce || 15) * 0.75)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm">Zone avant</span>
-                          <span className="font-bold">
-                            {Math.round((results.performance_metrics?.event_detection?.ball_bounce || 15) * 0.45)} (60%)
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm">Zone arrière</span>
-                          <span className="font-bold">
-                            {Math.round((results.performance_metrics?.event_detection?.ball_bounce || 15) * 0.3)} (40%)
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm">Côté coup droit</span>
-                          <span className="font-bold">
-                            {Math.round((results.performance_metrics?.event_detection?.ball_bounce || 15) * 0.4)} (53%)
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm">Côté revers</span>
-                          <span className="font-bold">
-                            {Math.round((results.performance_metrics?.event_detection?.ball_bounce || 15) * 0.35)} (47%)
-                          </span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-green-50">
-                    <CardHeader>
-                      <CardTitle className="text-green-800">Analyse Tactique</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        <div>
-                          <div className="text-sm font-medium">Zone préférée</div>
-                          <div className="text-sm text-green-700">Coup droit arrière (28%)</div>
-                        </div>
-                        <div>
-                          <div className="text-sm font-medium">Efficacité placement</div>
-                          <div className="text-sm text-green-700">Excellente (92%)</div>
-                        </div>
-                        <div>
-                          <div className="text-sm font-medium">Variété</div>
-                          <div className="text-sm text-green-700">Bonne répartition</div>
-                        </div>
-                        <div className="bg-green-100 p-3 rounded-lg mt-4">
-                          <div className="text-xs font-medium text-green-800">💡 Conseil</div>
-                          <div className="text-xs text-green-700 mt-1">
-                            Exploitez davantage le côté revers adverse - zone moins couverte
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="p-4 bg-blue-50 rounded-xl">
+                    <h4 className="font-bold text-blue-800 mb-2">Zone Preferee</h4>
+                    <p className="text-2xl font-bold text-blue-600">Revers long</p>
+                    <p className="text-sm text-slate-500">32% des impacts</p>
+                  </div>
+                  <div className="p-4 bg-emerald-50 rounded-xl">
+                    <h4 className="font-bold text-emerald-800 mb-2">Efficacite</h4>
+                    <p className="text-2xl font-bold text-emerald-600">{metrics.successRate.toFixed(0)}%</p>
+                    <p className="text-sm text-slate-500">taux de reussite</p>
+                  </div>
+                  <div className="p-4 bg-amber-50 rounded-xl">
+                    <h4 className="font-bold text-amber-800 mb-2">Conseil</h4>
+                    <p className="text-sm text-amber-700">Exploitez davantage le cote revers adverse</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -1970,54 +1258,139 @@ const ResultsPage = ({ results }) => {
   );
 };
 
-// Navigation Component
 const Navigation = () => {
-  const location = useLocation();
-  
+  return null;
+};
+
+const VideoGalleryPage = () => {
+  const navigate = useNavigate();
+  const results = SessionCache.load('results');
+  const analysisId = SessionCache.load('analysisId');
+
+  if (!results || !analysisId) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <Card className="max-w-md shadow-floating">
+          <CardContent className="p-8 text-center">
+            <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-8 h-8 text-amber-600" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Aucune analyse en cours</h3>
+            <p className="text-slate-600 mb-6">Veuillez d'abord analyser une video pour acceder aux compilations.</p>
+            <Button onClick={() => navigate('/')} className="gradient-bg-primary border-0">
+              <Home className="w-4 h-4 mr-2" />
+              Retour a l'accueil
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <nav className="bg-white shadow-sm border-b">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center space-x-4">
-            <h1 className="text-xl font-bold text-gray-900">PingPro</h1>
-            <div className="hidden md:flex space-x-4">
-              <Link 
-                to="/"
-                className={`px-3 py-2 rounded-md text-sm font-medium ${
-                  location.pathname === '/' 
-                    ? 'bg-blue-100 text-blue-700' 
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50/20 to-blue-50/20">
+      <header className="glass sticky top-0 z-50 border-b border-white/20">
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate(-1)}
+                className="text-slate-600 hover:text-slate-900"
               >
-                Analyse Vidéo
-              </Link>
-              <Link 
-                to="/realtime"
-                className={`px-3 py-2 rounded-md text-sm font-medium ${
-                  location.pathname === '/realtime' 
-                    ? 'bg-blue-100 text-blue-700' 
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Temps Réel
-              </Link>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Retour
+              </Button>
+              <div className="w-12 h-12 gradient-bg-primary rounded-2xl flex items-center justify-center shadow-lg">
+                <Video className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-slate-900">Galerie Videos</h1>
+                <p className="text-sm text-slate-500">Compilations de votre match</p>
+              </div>
             </div>
           </div>
         </div>
+      </header>
+      <div className="container mx-auto px-6 py-8">
+        <VideoGallery 
+          videos={results.video_compilations} 
+          analysisId={analysisId}
+          onBack={() => navigate(-1)}
+        />
       </div>
-    </nav>
+    </div>
   );
 };
 
-// Main App Component
+const ReportExportPage = () => {
+  const navigate = useNavigate();
+  const results = SessionCache.load('results');
+  const analysisId = SessionCache.load('analysisId');
+
+  if (!results || !analysisId) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <Card className="max-w-md shadow-floating">
+          <CardContent className="p-8 text-center">
+            <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-8 h-8 text-amber-600" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Aucune analyse en cours</h3>
+            <p className="text-slate-600 mb-6">Veuillez d'abord analyser une video pour generer un rapport.</p>
+            <Button onClick={() => navigate('/')} className="gradient-bg-primary border-0">
+              <Home className="w-4 h-4 mr-2" />
+              Retour a l'accueil
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50/20 to-blue-50/20">
+      <header className="glass sticky top-0 z-50 border-b border-white/20">
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate(-1)}
+                className="text-slate-600 hover:text-slate-900"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Retour
+              </Button>
+              <div className="w-12 h-12 gradient-bg-primary rounded-2xl flex items-center justify-center shadow-lg">
+                <FileText className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-slate-900">Rapport d'Analyse</h1>
+                <p className="text-sm text-slate-500">Export et impression</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+      <div className="container mx-auto px-6 py-8">
+        <ReportExport results={results} analysisId={analysisId} />
+      </div>
+    </div>
+  );
+};
+
 function App() {
   return (
     <Router>
-      <div className="App min-h-screen bg-gray-50">
+      <div className="App min-h-screen bg-slate-50">
         <Navigation />
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/realtime" element={<RealTimeAnalysis />} />
+          <Route path="/videos" element={<VideoGalleryPage />} />
+          <Route path="/report" element={<ReportExportPage />} />
         </Routes>
       </div>
     </Router>

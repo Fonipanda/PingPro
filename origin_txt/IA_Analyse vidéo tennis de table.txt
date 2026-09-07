@@ -1,0 +1,21 @@
+[IA] Analyse vidéo tennis de table
+
+J'ai un Laptop HP Elitebook 840 G3 ayant ses spécifications techniques :
+- processeur : Intel(R) Core(TM) i5-6300U CPU @ 2.40GHz   2.50 GHz
+- RAM : 16,0 Go (15,9 Go utilisable)
+- système d'exploitation : Windows 10 Professionnel 64 bits, processeur x64 (version 22H2, build 19045.5011)
+- carte graphique intégrée : Intel HD 520
+Je veux pouvoir utiliser des outils IA open source capable de faire une analyse vidéo d'un match de tennis de table.
+La vidéo ne sera pas transmise en temps réel. C'est un match filmé à l'aide de la caméra de smartphone en stocké en .mp4.
+Le but est d'analyser les performances d'un joueur de tennis de table, via des vidéos, pour fournir un retour d'information
+personnalisé tel que :
+- Analyse vidéo : Analyse les séquences vidéo et propose des statistiques et des conseils personnalisés sur les performances.
+- Statistiques : L'application génère des statistiques détaillées sur les points forts et les points à améliorer dans le jeu.
+- Compilations : Expurger la vidéo des temps morts. Et aussi de créer des compilations vidéo des meilleurs moments du match.
+Le tout sera intégré ultérieument à un site html.
+Lors de l'import de la vidéo, il faudra demander où se situe le joueur dont on analyser les performances. Est-il au service ou non ?
+Comment mettre cela en place stp ? Produits-moi un tutoriel complet qui détaillera minutieusement chacune de toutes les étapes.
+
+
+C:\TT_Analyze_Project\Video\input\Flow_1.MP4
+C:\TT_Analyze_Project\Video\output
