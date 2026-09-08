@@ -37,6 +37,12 @@ from pose_analysis import analyze_video_pose
 from pose_reference import compare_with_reference, suggest_improvements
 from table_detector import TableDetector
 from match_analysis import build_match_analysis, extract_video_fallback_scale
+from video_overlay import (
+    get_ffmpeg_path,
+    build_auto_edit,
+    generate_placement_overlay,
+    generate_pose_overlay,
+)
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
@@ -145,7 +151,7 @@ app.add_middleware(
 
 # Helpers -----------------------------------------------------------------------
 def _has_ffmpeg() -> bool:
-    return shutil.which("ffmpeg") is not None
+    return get_ffmpeg_path() is not None
 
 
 def _get_video_info(video_path: str) -> VideoInfo:
@@ -291,12 +297,13 @@ def _build_performance_metrics(
 
 
 def _create_video_segment(input_path: str, output_path: str, start: float, duration: float) -> bool:
-    if not _has_ffmpeg():
+    ffmpeg_path = get_ffmpeg_path()
+    if not ffmpeg_path:
         return False
     try:
         subprocess.run(
             [
-                "ffmpeg",
+                ffmpeg_path,
                 "-y",
                 "-i",
                 input_path,
@@ -325,38 +332,24 @@ def _create_video_segment(input_path: str, output_path: str, start: float, durat
         return False
 
 
-def _compile_auto_edit(video_path: str, out_dir: Path, rallies: List[Dict[str, Any]]) -> Optional[str]:
-    """Montage auto : concatène les échanges réellement détectés (sans temps morts)."""
-    if not rallies:
-        return None
-    segments_file = out_dir / "auto_edit_segments.txt"
-    with open(segments_file, "w", encoding="utf-8") as f:
-        for rally in rallies[:40]:  # garde-fou : 40 échanges max
-            start = max(0.0, float(rally["start_time"]) - 0.5)
-            end = float(rally["end_time"]) + 1.0
-            f.write(f"file '{Path(video_path).as_posix()}'\n")
-            f.write(f"inpoint {start}\n")
-            f.write(f"outpoint {end}\n")
+# Correspondance temps original -> temps compilation auto-edit, par analyse
+_AUTO_EDIT_SEGMENTS: Dict[str, List[Dict[str, float]]] = {}
 
-    output_path = out_dir / "auto_edit.mp4"
-    try:
-        subprocess.run(
-            [
-                "ffmpeg", "-y",
-                "-f", "concat", "-safe", "0",
-                "-i", str(segments_file),
-                "-c", "copy",
-                str(output_path),
-            ],
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=300,
-        )
-        return str(output_path) if output_path.exists() else None
-    except Exception as e:
-        logger.error(f"Auto-edit compilation failed: {e}")
+
+def _compile_auto_edit(
+    video_path: str, out_dir: Path, rallies: List[Dict[str, Any]], analysis_id: str
+) -> Optional[str]:
+    """Montage auto : concatène les échanges réellement détectés (sans temps morts).
+
+    Utilise un trim+concat ré-encodé (précis) et mémorise la correspondance
+    temporelle pour les overlays (placement, pose)."""
+    ffmpeg_path = get_ffmpeg_path()
+    if not ffmpeg_path or not rallies:
         return None
+    output_path, segments = build_auto_edit(video_path, rallies, out_dir, ffmpeg_path)
+    if output_path and segments:
+        _AUTO_EDIT_SEGMENTS[analysis_id] = segments
+    return output_path
 
 
 def _compile_videos(
@@ -381,7 +374,7 @@ def _compile_videos(
 
         # Montage auto prioritaire : échanges réellement détectés par le tracker
         if detected_rallies:
-            auto_edit = _compile_auto_edit(video_path, out_dir, detected_rallies)
+            auto_edit = _compile_auto_edit(video_path, out_dir, detected_rallies, analysis_id)
             if auto_edit:
                 compilations["auto_edit"] = auto_edit
 
@@ -405,39 +398,46 @@ def _compile_videos(
         return None
 
 
-def _apply_table_tennis_scoring(ttnet_results: Dict[str, Any]) -> Dict[str, Any]:
+def _apply_table_tennis_scoring(
+    ttnet_results: Dict[str, Any], match_analysis: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """
+    Score ESTIMÉ, clairement non fiable : la vidéo ne permet pas de savoir qui
+    marque chaque point sans identification des joueurs. Le nombre total de
+    points s'appuie sur les échanges réellement détectés (1 échange ≈ 1 point),
+    borné à un set raisonnable.
+    """
     stats = ttnet_results.get("match_statistics", {})
     events = stats.get("event_summary", {})
     total_bounces = events.get("ball_bounce", 15)
     serves = events.get("serve", 6)
     detection_rate = stats.get("ball_detection_rate", 0.65)
 
-    total_points = min(25, max(11, total_bounces // 2))
-    player1 = int(total_points * detection_rate)
+    rally_summary = (match_analysis or {}).get("rally_summary") or {}
+    detected_rallies = int(rally_summary.get("total_rallies", 0))
+
+    if detected_rallies > 0:
+        total_points = min(25, max(1, detected_rallies))
+    else:
+        total_points = min(25, max(11, total_bounces // 2))
+
+    player1 = int(round(total_points * detection_rate))
     player2 = total_points - player1
 
-    # Apply table-tennis 11-point rule
-    if player1 >= 11 and player1 - player2 >= 2:
-        pass
-    elif player2 >= 11 and player2 - player1 >= 2:
-        pass
-    elif detection_rate > 0.6:
-        player1, player2 = 11, max(0, min(9, player2))
-    else:
-        player1, player2 = max(0, min(9, player1)), 11
-
+    # Progression : cumul cohérent avec le score estimé final
     progression = []
-    for i in range(1, 20):
-        ratio = i / 19.0
+    for i in range(1, total_points + 1):
+        ratio = i / float(total_points)
         progression.append(
             {
                 "point": i,
-                "player1": int(player1 * ratio),
-                "player2": int(player2 * ratio),
+                "player1": int(round(player1 * ratio)),
+                "player2": int(round(player2 * ratio)),
             }
         )
 
     return {
+        "estimated": True,
         "final_score": {
             "player1": player1,
             "player2": player2,
@@ -457,8 +457,11 @@ def _apply_table_tennis_scoring(ttnet_results: Dict[str, Any]) -> Dict[str, Any]
             "match_format": "First to 2 sets (best of 3)",
         },
         "match_statistics": {
-            "total_points": len(progression),
-            "longest_rally": max(3, total_bounces // max(1, serves)),
+            "total_points": total_points,
+            "detected_rallies": detected_rallies,
+            "longest_rally": rally_summary.get("average_strokes")
+            and int(round(float(rally_summary.get("average_strokes"))))
+            or max(3, total_bounces // max(1, serves)),
             "aces_served": max(1, serves // 3),
             "unforced_errors": max(2, events.get("net_hit", 2)),
         },
@@ -749,6 +752,169 @@ def _generate_training_plan(
     return _generate_static_training_plan(params, match_analysis, pose_results, performance_metrics)
 
 
+def _generate_detailed_analysis_texts(
+    performance_metrics: PerformanceMetrics,
+    match_analysis: Optional[Dict[str, Any]],
+    pose_results: Optional[Dict[str, Any]],
+) -> Dict[str, List[str]]:
+    """
+    Produit des forces / faiblesses / recommandations DÉTAILLÉES et argumentées
+    (constat chiffré + cause probable + piste de travail). LLM si configuré,
+    sinon enrichissement statique à partir des données réelles.
+    """
+    llm = _generate_llm_analysis_texts(performance_metrics, match_analysis, pose_results)
+    if llm:
+        return llm
+    return _generate_static_analysis_texts(performance_metrics, match_analysis, pose_results)
+
+
+def _generate_static_analysis_texts(
+    performance_metrics: PerformanceMetrics,
+    match_analysis: Optional[Dict[str, Any]],
+    pose_results: Optional[Dict[str, Any]],
+) -> Dict[str, List[str]]:
+    rally_summary = (match_analysis or {}).get("rally_summary") or {}
+    speeds = (match_analysis or {}).get("ball_speed") or {}
+    placement = (match_analysis or {}).get("placement") or {}
+    avg_strokes = float(rally_summary.get("average_strokes", 0) or 0)
+    total_rallies = int(rally_summary.get("total_rallies", 0) or 0)
+    max_speed = speeds.get("max_speed_ms")
+    avg_speed = speeds.get("average_speed_ms")
+    tech = round(float(performance_metrics.technical_consistency or 0), 1)
+    pos = round(float(performance_metrics.positioning_score or 0), 1)
+    timing = round(float(performance_metrics.timing_accuracy or 0), 1)
+    overall = round(float(performance_metrics.overall_score or 0), 1)
+
+    strengths: List[str] = []
+    if total_rallies > 0:
+        strengths.append(
+            f"Vous avez maintenu {total_rallies} échanges détectés avec une longueur moyenne de "
+            f"{avg_strokes:.1f} coups. Cette régularité dans la durée du match montre une capacité "
+            f"à construire les points plutôt qu'à chercher le coup gagnant immédiat — un socle "
+            f"solide pour développer un jeu offensif par la suite."
+        )
+    if max_speed:
+        strengths.append(
+            f"Votre balle a atteint {max_speed} m/s en pointe (moyenne {avg_speed} m/s). "
+            f"Cette différence entre pointe et moyenne indique que vous variez l'intensité des "
+            f"frappes : exploitez ce potentiel en accélérant sur les balles hautes et mi-hautes, "
+            f"où le rapport risque/rendement est le meilleur."
+        )
+    strengths.append(
+        f"La consistance technique mesurée est de {tech}/100 pour un score global de {overall}/100. "
+        f"Le différentiel entre ces deux indicateurs suggère que votre régularité gestuelle porte "
+        f"vos résultats : continuer à travailler la qualité d'exécution (préparation, transfert du "
+        f"poids) devrait débloquer le score global."
+    )
+
+    weaknesses: List[str] = []
+    if placement.get("available"):
+        zones = placement.get("zones", {})
+        main_zone = max(zones.items(), key=lambda kv: kv[1]) if zones else None
+        if main_zone:
+            weaknesses.append(
+                f"Vos impacts se concentrent sur la zone « {main_zone[0]} » ({main_zone[1]} impacts sur "
+                f"{placement.get('total_balls_on_table', main_zone[1])}). Cette prévisibilité permet à "
+                f"l'adversaire de se placer avant même votre frappe : travailler le changement de "
+                f"rythme et la variation de longueur (courte/longe) rendra votre jeu beaucoup plus "
+                f"difficile à lire."
+            )
+    if max_speed and avg_speed and max_speed > 0:
+        ratio = avg_speed / max_speed
+        if ratio < 0.55:
+            weaknesses.append(
+                f"La vitesse moyenne ({avg_speed} m/s) représente seulement {ratio:.0%} de votre pointe "
+                f"({max_speed} m/s) : votre intensité de jeu est très inégale. Cela traduit souvent un "
+                f"placement tardif ou une préparation trop longue entre les coups — un travail de "
+                f"jambes et de récupération positionnelle (déplacements latéraux, retour au centre) "
+                f"égaliserait votre niveau d'exécution d'un échange à l'autre."
+            )
+    if avg_strokes and avg_strokes < 5:
+        weaknesses.append(
+            f"Vos échanges durent en moyenne {avg_strokes:.1f} coups : la majorité des points se "
+            f"joue dans les 3 premières frappes. Cela peut venir d'une prise de risque excessive "
+            f"en début d'échange ou d'une remise trop friable. Renforcer la qualité de la remise "
+            f"(poussette courte gênante plutôt que longue attaquerable) allongerait les échanges "
+            f"et vous donnerait plus d'occasions d'attaquer en position favorable."
+        )
+    weaknesses.append(
+        f"Axes mesurés les plus faibles : précision/variété {timing}/100 et positionnement "
+        f"{pos}/100. Ce sont vos deux leviers de progression les plus directs : des exercices "
+        f"ciblés (cibles posées sur la table pour la précision, jeux à thème limités au "
+        f"placement) transformeront rapidement ces scores en points gagnés en match."
+    )
+
+    recommendations: List[str] = [
+        "Séance à thème : 20 minutes de jeu en diagonale coup droit avec changement d'orientation "
+        "imposé après 3 échanges, pour casser la prévisibilité du placement identifiée plus haut.",
+        "Travail de remise : votre adversaire sert, vous devez renvoyer court (zone du filet) dans "
+        "7 balles sur 10 ; cela allonge les échanges et réduit les attaques adverses en 3e balle.",
+        "Exercice de vitesse moyenne : filmer à nouveau une séance après un travail de jambes et "
+        "comparer la vitesse moyenne de balle — l'objectif est de rapprocher la moyenne de la pointe.",
+        "Contrôle sous pression : jouer des points avec obligation de 5 coups minimum avant "
+        "attaque, afin d'automatiser la construction du point observée dans les échanges longs.",
+    ]
+    return {"strengths": strengths, "weaknesses": weaknesses, "recommendations": recommendations}
+
+
+def _generate_llm_analysis_texts(
+    performance_metrics: PerformanceMetrics,
+    match_analysis: Optional[Dict[str, Any]],
+    pose_results: Optional[Dict[str, Any]],
+) -> Optional[Dict[str, List[str]]]:
+    """Forces/faiblesses/recommandations détaillées via OpenAI. None si clé absente ou erreur."""
+    if not OPENAI_API_KEY:
+        return None
+    try:
+        import openai
+    except ImportError:
+        return None
+
+    def _call() -> Optional[Dict[str, List[str]]]:
+        try:
+            client = openai.OpenAI(api_key=OPENAI_API_KEY)
+            context = f"Métriques de performance : {performance_metrics.model_dump_json(exclude_none=True)}\n"
+            if match_analysis:
+                ma = dict(match_analysis)
+                ma.pop("bounces", None)
+                ma["rallies"] = ma.get("rally_summary", {})
+                context += f"Analyse de match : {ma}\n"
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "Tu es un coach expert de tennis de table. Réponds UNIQUEMENT en JSON valide : "
+                            '{"strengths":[str],"weaknesses":[str],"recommendations":[str]}. '
+                            "Chaque élément doit être un paragraphe argumenté de 3 à 5 phrases : "
+                            "un constat appuyé sur un chiffre fourni, la cause probable, puis une piste "
+                            "de travail concrète. 3 éléments minimum par liste. Français."
+                        ),
+                    },
+                    {"role": "user", "content": context},
+                ],
+                response_format={"type": "json_object"},
+                max_tokens=1400,
+                temperature=0.6,
+            )
+            import json
+
+            data = json.loads(response.choices[0].message.content)
+            result = {}
+            for key in ("strengths", "weaknesses", "recommendations"):
+                values = data.get(key, [])
+                result[key] = [str(v) for v in values if v][:6]
+            if not result["strengths"] or not result["weaknesses"]:
+                return None
+            return result
+        except Exception as e:
+            logger.warning(f"Analyse LLM détaillée impossible, fallback statique : {e}")
+            return None
+
+    return _call()
+
+
 async def _process_video_analysis(analysis_id: str, video_path: str, params: AnalysisRequest):
     """Background task: run TTNet + Pose analysis and build the result."""
     try:
@@ -767,7 +933,7 @@ async def _process_video_analysis(analysis_id: str, video_path: str, params: Ana
         # 1bis. Analyse de match (table + homographie + placement/vitesses/échanges)
         try:
             match_analysis = await asyncio.get_event_loop().run_in_executor(
-                None, build_match_analysis, ttnet_results, video_path
+                None, build_match_analysis, ttnet_results, video_path, None, None, params.player_side
             )
         except Exception as e:
             logger.warning(f"Match analysis failed (non-blocking): {e}")
@@ -818,19 +984,19 @@ async def _process_video_analysis(analysis_id: str, video_path: str, params: Ana
             ttnet_results, analysis_data, pose_results, pose_comparison
         )
 
-        # 7. Recommendations (from TTNet + pose suggestions)
-        recommendations = ttnet_results.get("technical_insights", {}).get(
-            "technical_recommendations", []
+        # 7. Recommendations (détaillées : LLM si configuré, sinon enrichissement statique)
+        detailed_texts = await asyncio.get_event_loop().run_in_executor(
+            None,
+            _generate_detailed_analysis_texts,
+            performance_metrics,
+            match_analysis,
+            pose_results if "error" not in pose_results else None,
         )
-        if "error" not in pose_results:
-            recommendations.extend(suggest_improvements(pose_results, pose_comparison))
-        if not recommendations:
-            recommendations = [
-                "Continuer l'entraînement régulier",
-                "Filmer de vraies sessions pour une analyse plus précise",
-                "Travailler la régularité technique",
-            ]
-        recommendations = list(dict.fromkeys(recommendations))[:6]
+        recommendations = detailed_texts["recommendations"]
+        # Alimente aussi les onglets Points Forts / Points Faibles avec des
+        # paragraphes argumentés basés sur les données réelles
+        analysis_data["stroke_analysis"]["strengths"] = detailed_texts["strengths"]
+        analysis_data["stroke_analysis"]["weaknesses"] = detailed_texts["weaknesses"]
 
         # 8. Video compilations (optional) — montage auto basé sur les échanges détectés
         analysis_status[analysis_id].progress = 85.0
@@ -839,6 +1005,45 @@ async def _process_video_analysis(analysis_id: str, video_path: str, params: Ana
         video_compilations = _compile_videos(
             video_path, analysis_id, detected_rallies=detected_rallies
         )
+
+        # 8bis. Overlays : placement des coups + squelette de pose sur le montage auto
+        if video_compilations and video_compilations.get("auto_edit"):
+            analysis_status[analysis_id].current_step = "Génération des overlays vidéo (placement, pose)..."
+            try:
+                ffmpeg_path = get_ffmpeg_path()
+                source = video_compilations["auto_edit"]
+                out_dir = COMPILATIONS_DIR / analysis_id
+                segments = _AUTO_EDIT_SEGMENTS.get(analysis_id, [])
+
+                bounces = (match_analysis or {}).get("bounces") or []
+                if bounces and ffmpeg_path:
+                    td = TableDetector()
+                    tinfo = td.detect_table_homography(video_path)
+                    if tinfo and tinfo.get("H_inv") is not None:
+                        placement_path = generate_placement_overlay(
+                            source,
+                            str(out_dir / "placement_overlay.mp4"),
+                            bounces,
+                            segments,
+                            tinfo["H_inv"],
+                            ffmpeg_path,
+                        )
+                        if placement_path:
+                            video_compilations["placement_overlay"] = placement_path
+
+                pose_frames_overlay = pose_results.get("frames") or [] if "error" not in pose_results else []
+                if pose_frames_overlay and ffmpeg_path:
+                    pose_path = generate_pose_overlay(
+                        source,
+                        str(out_dir / "pose_overlay.mp4"),
+                        pose_frames_overlay,
+                        segments,
+                        ffmpeg_path,
+                    )
+                    if pose_path:
+                        video_compilations["pose_overlay"] = pose_path
+            except Exception as e:
+                logger.warning(f"Overlay generation failed (non-blocking): {e}")
 
         # 9. Video info
         video_info = _get_video_info(video_path)
@@ -908,7 +1113,7 @@ async def _process_video_analysis(analysis_id: str, video_path: str, params: Ana
             confidence_score=ttnet_results.get("match_statistics", {}).get("ball_detection_rate", 0),
             video_compilations=video_compilations,
             lexicon_analysis=video_processing_results.get("technical_analysis", {}),
-            table_tennis_scoring=_apply_table_tennis_scoring(ttnet_results),
+            table_tennis_scoring=_apply_table_tennis_scoring(ttnet_results, match_analysis),
             pose_reference_comparison=pose_comparison,
             pose_report=pose_report,
             overlay_frames=pose_results.get("overlay_frames") if "error" not in pose_results else None,

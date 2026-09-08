@@ -176,14 +176,31 @@ def _speed_analysis(
     return result
 
 
+def _classify_stroke_side(speed_ms: float, table_y: float, speed_median_ms: float, left_handed: bool) -> str:
+    """
+    Estimation honnête du type de coup pour un rebond :
+    - topspin vs coup poussé : vitesse locale vs vitesse médiane des rebonds
+    - coup droit / revers : côté de la table (largeur), hypothèse joueur droitier
+      inversée si joueur gaucher. L'orientation caméra est arbitraire : à préciser
+      via player_side si connue.
+    """
+    kind = "topspin" if speed_ms > speed_median_ms else "coup"
+    fh = table_y > 0
+    if left_handed:
+        fh = not fh
+    side = "coup_droit" if fh else "revers"
+    return f"{kind}_{side}"
+
+
 def detect_bounces(
     ball_points: List[Dict[str, float]],
     table_coords: List[Tuple[float, float]],
     inside_flags: List[bool],
+    left_handed: bool = False,
 ) -> List[Dict[str, Any]]:
     """Rebonds : changement de signe de la vitesse verticale de la balle sur la table."""
-    bounces = []
     n = len(ball_points)
+    candidates = []
     for i in range(1, n - 1):
         if not (inside_flags and inside_flags[i] and inside_flags[i - 1] and inside_flags[i + 1]):
             continue
@@ -195,15 +212,31 @@ def detect_bounces(
         vy1, vy2 = y_curr - y_prev, y_next - y_curr
         # Rebond : la balle descend puis remonte (changement de signe net)
         if vy1 < 0 and vy2 > 0 and (vy2 - vy1) > 0.01:
-            bounces.append(
+            # vitesse locale approximative (m/s) autour du rebond
+            dt1 = ball_points[i]["t"] - ball_points[i - 1]["t"]
+            dt2 = ball_points[i + 1]["t"] - ball_points[i]["t"]
+            speed = 0.0
+            if dt1 > 0 and dt2 > 0:
+                d1 = ((table_coords[i][0] - table_coords[i - 1][0]) ** 2 + (table_coords[i][1] - table_coords[i - 1][1]) ** 2) ** 0.5
+                d2 = ((table_coords[i + 1][0] - table_coords[i][0]) ** 2 + (table_coords[i + 1][1] - table_coords[i][1]) ** 2) ** 0.5
+                speed = (d1 + d2) / (dt1 + dt2)
+            candidates.append(
                 {
                     "timestamp": round(ball_points[i]["t"], 2),
                     "table_x": round(table_coords[i][0], 2),
                     "table_y": round(table_coords[i][1], 2),
                     "confidence": min(1.0, (vy2 - vy1) / 0.2),
+                    "speed_ms": round(speed, 1),
                 }
             )
-    return bounces
+
+    if candidates:
+        median_speed = float(np.median([c["speed_ms"] for c in candidates]))
+        for c in candidates:
+            c["stroke_side"] = _classify_stroke_side(
+                c["speed_ms"], c["table_y"], median_speed, left_handed
+            )
+    return candidates
 
 
 def build_match_analysis(
@@ -211,6 +244,7 @@ def build_match_analysis(
     video_path: str,
     table_info: Optional[Dict[str, Any]] = None,
     fallback_scale_m_per_px: Optional[float] = None,
+    player_side: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Construit le bloc "Analyse de match" à partir des frame_analyses TTNet.
@@ -232,7 +266,11 @@ def build_match_analysis(
     rallies = segment_rallies(ball_points)
     placement = _placement_analysis(table_coords, inside_flags)
     speeds = _speed_analysis(ball_points, table_coords, table_info, fallback_scale_m_per_px)
-    bounces = detect_bounces(ball_points, table_coords, inside_flags) if table_info else []
+    bounces = (
+        detect_bounces(ball_points, table_coords, inside_flags, left_handed=(player_side == "gauche"))
+        if table_info
+        else []
+    )
 
     longest = max(rallies, key=lambda r: r["stroke_count"], default=None)
     length_buckets = {

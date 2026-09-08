@@ -50,6 +50,13 @@ const num = (value, fallback = 0) => {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
 };
+// 243 -> "4:03" ; 62.5 -> "1:03"
+const formatDuration = (seconds) => {
+  const total = Math.max(0, Math.round(Number(seconds) || 0));
+  const m = Math.floor(total / 60);
+  const s = String(total % 60).padStart(2, '0');
+  return `${m}:${s}`;
+};
 
 // Shared header for analysis pages
 const PageHeader = ({ title, subtitle, right }) => (
@@ -526,10 +533,12 @@ const ResultsPage = ({ results, onReset }) => {
   const rally = metrics.rally_analysis || {};
   const stroke = technical.stroke_analysis || {};
   const positioning = technical.positioning_analysis || {};
+  const matchAnalysis = results?.match_analysis || null;
   const compilations = results?.video_compilations || {};
   const videoInfo = results?.video_info || {};
-  const duration = Math.round(num(videoInfo.duration_seconds, 0));
   const analysisId = results?.analysis_id;
+  const [statsView, setStatsView] = useState('you');
+  const [selectedMoment, setSelectedMoment] = useState(null);
 
   const recommendations = Array.isArray(results?.recommendations)
     ? results.recommendations
@@ -667,10 +676,21 @@ const ResultsPage = ({ results, onReset }) => {
                 iconColor="text-blue-500"
               />
             )}
+            {compilations.placement_overlay && (
+              <VideoCard
+                title="Placement des coups — incrustation"
+                badge="Rebonds incrustés"
+                description="Chaque rebond détecté est incrusté dans la vidéo (couleur = type de coup estimé)"
+                videoType="placement_overlay"
+                compilations={compilations}
+                analysisId={analysisId}
+                iconColor="text-purple-500"
+              />
+            )}
             <VideoCard
               title="Vidéo Compilée du Match"
               badge="Temps morts supprimés"
-              description={`Analyse de ${duration}s de vidéo${videoInfo.resolution ? ` • ${videoInfo.resolution}` : ''}`}
+              description={`Analyse de ${formatDuration(videoInfo.duration_seconds)} de vidéo${videoInfo.resolution ? ` • ${videoInfo.resolution}` : ''}`}
               videoType="match_compilation"
               compilations={compilations}
               analysisId={analysisId}
@@ -681,53 +701,134 @@ const ResultsPage = ({ results, onReset }) => {
             <div className="grid lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Statistiques des Échanges</CardTitle>
+                  <CardTitle className="flex items-center justify-between flex-wrap gap-2">
+                    <span>Statistiques des Échanges</span>
+                    <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-normal">
+                      {[
+                        ['you', 'Vous'],
+                        ['opponent', 'Adversaire'],
+                      ].map(([key, label]) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setStatsView(key)}
+                          className={`px-3 py-1.5 transition-colors ${
+                            statsView === key
+                              ? 'bg-emerald-500 text-white'
+                              : 'bg-white text-gray-600 hover:bg-gray-50'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-64 mb-4">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={[
-                          {
-                            name: 'Longueur moyenne',
-                            Coups: Number(num(rally.average_rally_length, 0).toFixed(1)),
-                          },
-                          {
-                            name: 'Services détectés',
-                            Coups: num(events.serve, 0),
-                          },
-                          {
-                            name: 'Rebonds détectés',
-                            Coups: num(events.ball_bounce, 0),
-                          },
-                          {
-                            name: 'Frappes détectées',
-                            Coups: num(events.hit, 0),
-                          },
-                        ]}
-                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar dataKey="Coups" fill="#10b981" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
+                  {statsView === 'you' ? (
+                    <>
+                      <div className="h-64 mb-4">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart
+                            data={[
+                              {
+                                name: 'Longueur moyenne',
+                                Coups: Number(num(rally.average_rally_length, 0).toFixed(1)),
+                              },
+                              {
+                                name: 'Services détectés',
+                                Coups: num(events.serve, 0),
+                              },
+                              {
+                                name: 'Rebonds détectés',
+                                Coups: num(events.ball_bounce, 0),
+                              },
+                              {
+                                name: 'Frappes détectées',
+                                Coups: num(events.hit, 0),
+                              },
+                            ]}
+                            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                            <YAxis />
+                            <Tooltip />
+                            <Bar dataKey="Coups" fill="#10b981" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <StatTile
-                      value={num(rally.average_rally_length, 0).toFixed(1)}
-                      label="Coups par échange (moy.)"
-                    />
-                    <StatTile
-                      value={num(rally.total_serves, 0)}
-                      label="Services détectés"
-                      colorClass="text-blue-600"
-                      bgClass="bg-blue-50"
-                    />
-                  </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <StatTile
+                          value={num(rally.average_rally_length, 0).toFixed(1)}
+                          label="Coups par échange (moy.)"
+                        />
+                        <StatTile
+                          value={num(rally.total_serves, 0)}
+                          label="Services détectés"
+                          colorClass="text-blue-600"
+                          bgClass="bg-blue-50"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-xs text-gray-500 mb-3">
+                        Le suivi ne distingue pas encore les deux joueurs : les chiffres adverses
+                        sont déduits de la répartition des impacts par moitié de table (camp estimé
+                        selon le côté déclaré à l'upload).
+                      </p>
+                      <div className="h-64 mb-4">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart
+                            data={[
+                              {
+                                name: 'Frappes adverses (impacts votre camp)',
+                                Coups:
+                                  (matchAnalysis?.placement?.heatmap_grid || []).length > 0
+                                    ? matchAnalysis.placement.heatmap_grid.flat(2).reduce((a, b) => a + b, 0) -
+                                      (matchAnalysis.placement.heatmap_grid[0] || []).flat().reduce((a, b) => a + b, 0)
+                                    : 0,
+                              },
+                              {
+                                name: 'Impacts camp adverse (vos frappes)',
+                                Coups: (matchAnalysis?.placement?.heatmap_grid?.[0] || [])
+                                  .flat()
+                                  .reduce((a, b) => a + b, 0),
+                              },
+                            ]}
+                            layout="vertical"
+                            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis type="number" allowDecimals={false} />
+                            <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 10 }} />
+                            <Tooltip />
+                            <Bar dataKey="Coups" fill="#ef4444" radius={[0, 4, 4, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <StatTile
+                          value={
+                            matchAnalysis?.ball_speed?.max_speed_ms != null
+                              ? `${matchAnalysis.ball_speed.max_speed_ms} m/s`
+                              : 'N/A'
+                          }
+                          label="Vitesse max de balle"
+                          colorClass="text-purple-600"
+                          bgClass="bg-purple-50"
+                        />
+                        <StatTile
+                          value={num(matchAnalysis?.rally_summary?.total_rallies, 0)}
+                          label="Échanges contre adversaire"
+                          colorClass="text-blue-600"
+                          bgClass="bg-blue-50"
+                        />
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
 
@@ -769,10 +870,9 @@ const ResultsPage = ({ results, onReset }) => {
                         bgClass="bg-orange-50"
                       />
                     </div>
-                    {videoInfo.fps && (
+                    {videoInfo.resolution && (
                       <p className="text-xs text-gray-500 text-center">
-                        Vidéo : {videoInfo.resolution || 'résolution inconnue'} •{' '}
-                        {num(videoInfo.fps, 0)} fps • {num(videoInfo.frame_count, 0)} frames
+                        Vidéo : {videoInfo.resolution}
                       </p>
                     )}
                   </div>
@@ -780,23 +880,37 @@ const ResultsPage = ({ results, onReset }) => {
               </Card>
             </div>
 
-            {/* Real score progression */}
+            {/* Real score progression (estimation) */}
             <Card>
               <CardHeader>
-                <CardTitle>Progression du Score au Cours du Match</CardTitle>
+                <CardTitle className="flex items-center gap-2 flex-wrap">
+                  <span>Progression du Score au Cours du Match</span>
+                  <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">
+                    Estimation
+                  </Badge>
+                </CardTitle>
               </CardHeader>
               <CardContent>
+                <p className="text-xs text-gray-500 mb-4">
+                  La vidéo ne permet pas de savoir qui marque chaque point (les joueurs ne sont pas
+                  identifiés) : ce score est une <strong>estimation</strong> basée sur les{' '}
+                  {num(matchStats.detected_rallies, num(rally.total_serves, 0))} échanges réellement
+                  détectés, répartis selon la qualité de détection.
+                </p>
                 <div className="h-64 mb-6">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={scoreData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="point" />
+                      <XAxis
+                        dataKey="point"
+                        label={{ value: 'Points joués (est.)', position: 'insideBottom', offset: -2, fontSize: 11 }}
+                      />
                       <YAxis allowDecimals={false} />
                       <Tooltip
-                        labelFormatter={(label) => `Point ${label}`}
+                        labelFormatter={(label) => `Après le point ${label} (estimation)`}
                         formatter={(value, name) => [
                           value,
-                          name === 'player1' ? 'Vous' : 'Adversaire',
+                          name === 'player1' ? 'Vous (est.)' : 'Adversaire (est.)',
                         ]}
                       />
                       <Legend />
@@ -805,14 +919,16 @@ const ResultsPage = ({ results, onReset }) => {
                         dataKey="player1"
                         stroke="#10b981"
                         strokeWidth={3}
-                        name="Votre score"
+                        name="Vous (est.)"
+                        dot={false}
                       />
                       <Line
                         type="monotone"
                         dataKey="player2"
                         stroke="#ef4444"
                         strokeWidth={3}
-                        name="Score adversaire"
+                        name="Adversaire (est.)"
+                        dot={false}
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -825,14 +941,18 @@ const ResultsPage = ({ results, onReset }) => {
                         {num(finalScore.player1, 0)}
                       </div>
                       <div className="text-lg font-semibold">Vous</div>
-                      <div className="text-sm text-gray-600">{won ? 'Victoire' : 'Défaite'}</div>
+                      <div className="text-sm text-gray-600">
+                        {won ? 'Victoire (est.)' : 'Défaite (est.)'}
+                      </div>
                     </div>
                     <div className="text-center">
                       <div className="text-4xl font-bold text-red-500 mb-2">
                         {num(finalScore.player2, 0)}
                       </div>
                       <div className="text-lg font-semibold">Adversaire</div>
-                      <div className="text-sm text-gray-600">{won ? 'Défaite' : 'Victoire'}</div>
+                      <div className="text-sm text-gray-600">
+                        {won ? 'Défaite (est.)' : 'Victoire (est.)'}
+                      </div>
                     </div>
                   </div>
 
@@ -842,10 +962,17 @@ const ResultsPage = ({ results, onReset }) => {
                       Lecture du match
                     </h4>
                     <p className="text-sm text-gray-600">
-                      Score final reconstitué automatiquement à partir des événements détectés
-                      ({num(events.serve, 0)} services, {num(events.ball_bounce, 0)} rebonds).
+                      Score <strong>estimé</strong> à partir des {num(matchStats.detected_rallies, 0)}{' '}
+                      échanges détectés dans la vidéo — un échange détecté compte pour un point.
                       Longueur moyenne d'échange : {num(rally.average_rally_length, 0).toFixed(1)}{' '}
-                      coups{num(matchStats.longest_rally, 0) > 0 ? `, plus long échange : ${num(matchStats.longest_rally, 0)} coups` : ''}.
+                      coups
+                      {num(matchStats.longest_rally, 0) > 0
+                        ? `, plus long échange : ${num(matchStats.longest_rally, 0)} coups`
+                        : ''}
+                      . Les {num(events.serve, 0)} services détectés correspondent aux débuts
+                      d'échange identifiés par le moteur ; chaque échange ne compte qu'une fois,
+                      c'est pourquoi ce nombre peut être inférieur au nombre de points. Pour un
+                      score exact, saisissez-le manuellement après le match (fonction à venir).
                     </p>
                   </div>
                 </div>
@@ -868,8 +995,8 @@ const ResultsPage = ({ results, onReset }) => {
 
                   <div className="grid md:grid-cols-3 gap-4 mb-6">
                     <StatTile
-                      value={won ? 'Victoire' : 'Défaite'}
-                      label="Résultat final"
+                      value={won ? 'Victoire (est.)' : 'Défaite (est.)'}
+                      label="Résultat final (score estimé)"
                       colorClass={won ? 'text-emerald-600' : 'text-red-600'}
                       bgClass="bg-white"
                     />
@@ -880,7 +1007,7 @@ const ResultsPage = ({ results, onReset }) => {
                       bgClass="bg-white"
                     />
                     <StatTile
-                      value={`${duration}min`}
+                      value={formatDuration(videoInfo.duration_seconds)}
                       label="Durée de la vidéo"
                       colorClass="text-purple-600"
                       bgClass="bg-white"
@@ -984,15 +1111,15 @@ const ResultsPage = ({ results, onReset }) => {
 
                     {Array.isArray(stroke.strengths) && stroke.strengths.length > 0 && (
                       <div className="bg-emerald-50 rounded-lg p-4">
-                        <h4 className="font-semibold text-emerald-800 mb-2">Points forts détectés</h4>
-                        <ul className="space-y-2 text-sm text-gray-700">
+                        <h4 className="font-semibold text-emerald-800 mb-3">Points forts détectés</h4>
+                        <div className="space-y-3">
                           {stroke.strengths.map((s, i) => (
-                            <li key={i} className="flex items-start">
+                            <p key={i} className="text-sm text-gray-700 leading-relaxed flex items-start">
                               <CheckCircle className="w-4 h-4 mr-2 text-green-500 mt-0.5 shrink-0" />
-                              {s}
-                            </li>
+                              <span>{s}</span>
+                            </p>
                           ))}
-                        </ul>
+                        </div>
                       </div>
                     )}
 
@@ -1098,14 +1225,14 @@ const ResultsPage = ({ results, onReset }) => {
                     <div className="mt-6">
                       <Separator className="mb-6" />
                       <h4 className="font-semibold mb-3">Observations techniques</h4>
-                      <ul className="space-y-2 text-sm text-gray-700">
+                      <div className="space-y-3">
                         {stroke.weaknesses.map((w, i) => (
-                          <li key={i} className="flex items-start">
+                          <p key={i} className="text-sm text-gray-700 leading-relaxed flex items-start">
                             <Target className="w-4 h-4 mr-2 text-orange-500 mt-0.5 shrink-0" />
-                            {w}
-                          </li>
+                            <span>{w}</span>
+                          </p>
                         ))}
-                      </ul>
+                      </div>
                     </div>
                   )}
                 </CardContent>
@@ -1195,23 +1322,119 @@ const ResultsPage = ({ results, onReset }) => {
               />
             </div>
 
-            {Array.isArray(results?.highlights_timestamps) &&
-              results.highlights_timestamps.length > 0 && (
+            {(() => {
+              const moments = [];
+              const km = matchAnalysis?.key_moments || {};
+              if (km.longest_rally) {
+                moments.push({
+                  label: 'Plus long échange',
+                  detail: `${km.longest_rally.stroke_count} coups`,
+                  t: km.longest_rally.start_time,
+                });
+              }
+              if (km.fastest_frame_speed_ms) {
+                moments.push({
+                  label: 'Frappe la plus rapide',
+                  detail: `${km.fastest_frame_speed_ms} m/s`,
+                });
+              }
+              (matchAnalysis?.rallies || [])
+                .filter((r) => (r.stroke_count || 0) >= 8)
+                .slice(0, 5)
+                .forEach((r, i) =>
+                  moments.push({
+                    label: `Échange long ${i + 1}`,
+                    detail: `${r.stroke_count} coups`,
+                    t: r.start_time,
+                  })
+                );
+              if (moments.length === 0) return null;
+              return (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Moments Clés Détectés</CardTitle>
+                    <CardTitle>Moments Clés — à revoir en vidéo</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex flex-wrap gap-2">
-                      {results.highlights_timestamps.map((t, i) => (
-                        <Badge key={i} variant="outline" className="text-gray-700">
-                          {num(t, 0).toFixed(0)}s
-                        </Badge>
+                    <p className="text-xs text-gray-500 mb-4">
+                      Chaque moment clé est ancré sur la compilation des échanges détectés :
+                      cliquez sur « Voir » pour lancer la lecture au bon endroit.
+                    </p>
+                    <div className="grid md:grid-cols-2 gap-3">
+                      {moments.map((m, i) => (
+                        <div
+                          key={`moment-${i}`}
+                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                        >
+                          <div>
+                            <div className="text-sm font-medium text-gray-800">{m.label}</div>
+                            <div className="text-xs text-gray-500">
+                              {m.detail}
+                              {m.t != null ? ` • ${formatDuration(m.t)}` : ''}
+                            </div>
+                          </div>
+                          {m.t != null && compilations.auto_edit && (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedMoment(m.t)}
+                              className="px-3 py-1.5 text-xs rounded-md bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
+                            >
+                              Voir
+                            </button>
+                          )}
+                        </div>
                       ))}
                     </div>
+                    {selectedMoment != null && compilations.auto_edit && (
+                      <div className="mt-4">
+                        <video
+                          key={selectedMoment}
+                          src={`${getVideoUrl(analysisId, 'auto_edit')}#t=${selectedMoment}`}
+                          controls
+                          autoPlay
+                          className="w-full rounded-lg border border-gray-200"
+                        />
+                        <p className="text-xs text-gray-400 mt-2 text-center">
+                          Lecture depuis {formatDuration(selectedMoment)} dans la compilation.
+                        </p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
-              )}
+              );
+            })()}
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Événements détectés — de quoi parle-t-on ?</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <h4 className="font-semibold text-gray-800 mb-1">Service</h4>
+                    <p className="text-xs text-gray-600 leading-relaxed">
+                      Début d'un échange : la balle est lancée puis frappée vers la table. Le
+                      moteur identifie un service quand le premier impact d'un échange est suivi
+                      d'un passage au-dessus du filet.
+                    </p>
+                  </div>
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <h4 className="font-semibold text-gray-800 mb-1">Rebond</h4>
+                    <p className="text-xs text-gray-600 leading-relaxed">
+                      Contact de la balle avec la table : la trajectoire verticale s'inverse
+                      (descente puis remontée). Chaque rebond incrusté dans la vidéo correspond à
+                      ce point d'inversion, projeté sur le gabarit de la table.
+                    </p>
+                  </div>
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <h4 className="font-semibold text-gray-800 mb-1">Frappes</h4>
+                    <p className="text-xs text-gray-600 leading-relaxed">
+                      Traversées de la zone de jeu estimées comme des coups de raquette. Le nombre
+                      de frappes d'un échange détermine sa longueur (coups par échange).
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             <Card>
               <CardHeader>
@@ -1245,84 +1468,105 @@ const ResultsPage = ({ results, onReset }) => {
             </Card>
           </TabsContent>
 
-          {/* ---------------- Impacts Balle ---------------- */}
+          {/* ---------------- Impacts Balle & Placement ---------------- */}
           <TabsContent value="ball-impacts" className="space-y-8">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Target className="w-5 h-5 text-blue-500" />
-                  <span>Visualisation des Impacts de Balle</span>
+                  <span>Carte de placement des coups (rebonds réellement détectés)</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="bg-white rounded-lg p-6 border-2 border-gray-200">
-                  <h4 className="font-semibold text-gray-800 mb-4 text-center">
-                    Table de Tennis de Table - Vue du dessus
-                  </h4>
+                {(matchAnalysis?.bounces || []).length > 0 ? (
+                  <>
+                    <div className="flex justify-center">
+                      <svg
+                        width="600"
+                        height="334"
+                        viewBox="-10 -10 294 172.5"
+                        className="rounded"
+                        role="img"
+                        aria-label="Placement réel des rebonds détectés sur la table"
+                      >
+                        {/* Table ITTF 2,74 x 1,525 m — coordonnées : x longueur (-1,37 à 1,37), y largeur (-0,7625 à 0,7625) */}
+                        <rect x="0" y="0" width="274" height="152.5" fill="#1e4d2b" stroke="#111" strokeWidth="1.5" rx="2" />
+                        {/* Filet (au milieu de la longueur) */}
+                        <line x1="137" y1="0" x2="137" y2="152.5" stroke="#fff" strokeWidth="2" />
+                        {/* Lignes médianes (simples / doubles) */}
+                        <line x1="0" y1="76.25" x2="274" y2="76.25" stroke="#fff" strokeWidth="0.8" strokeDasharray="4,4" opacity="0.6" />
+                        {/* Rebonds */}
+                        {matchAnalysis.bounces.map((b, idx) => {
+                          const sx = ((b.table_x + 1.37) / 2.74) * 274;
+                          const sy = ((b.table_y + 0.7625) / 1.525) * 152.5;
+                          const colorMap = {
+                            topspin_coup_droit: '#f59e0b',
+                            topspin_revers: '#3b82f6',
+                            coup_droit: '#eab308',
+                            revers: '#22c55e',
+                            inconnu: '#e5e7eb',
+                          };
+                          const fill = colorMap[b.stroke_side] || colorMap.inconnu;
+                          return (
+                            <g key={`bounce-${idx}`}>
+                              <circle cx={sx} cy={sy} r="4.5" fill={fill} opacity="0.9" stroke="#111" strokeWidth="0.5">
+                                <title>
+                                  {`Rebond à ${formatDuration(b.timestamp)} • ${b.stroke_side?.replace(/_/g, ' ') || 'inconnu'}${b.speed_ms ? ` • ${b.speed_ms} m/s` : ''}`}
+                                </title>
+                              </circle>
+                            </g>
+                          );
+                        })}
+                      </svg>
+                    </div>
 
-                  <div className="flex justify-center">
-                    <svg
-                      width="400"
-                      height="200"
-                      viewBox="0 0 400 200"
-                      className="border border-gray-300 rounded"
-                      role="img"
-                      aria-label="Visualisation des impacts de balle sur la table"
-                    >
-                      <rect x="20" y="20" width="360" height="160" fill="#2d5016" stroke="#000" strokeWidth="2" />
-                      <line x1="200" y1="20" x2="200" y2="180" stroke="#fff" strokeWidth="2" />
-                      <line x1="20" y1="100" x2="380" y2="100" stroke="#000" strokeWidth="3" />
-                      <text x="40" y="15" fontSize="12" fill="#000" fontWeight="bold">Adversaire</text>
-                      <text x="330" y="195" fontSize="12" fill="#000" fontWeight="bold">Vous</text>
-                      <line x1="20" y1="60" x2="380" y2="60" stroke="#fff" strokeWidth="1" strokeDasharray="5,5" opacity="0.5" />
-                      <line x1="20" y1="140" x2="380" y2="140" stroke="#fff" strokeWidth="1" strokeDasharray="5,5" opacity="0.5" />
-
-                      {ballImpacts.map((impact, idx) => (
-                        <circle
-                          key={`impact-${idx}`}
-                          cx={impact.x}
-                          cy={impact.y}
-                          r="4"
-                          fill={impact.player === 'you' ? '#3b82f6' : '#ef4444'}
-                          opacity="0.8"
-                        />
-                      ))}
-
-                      {serviceImpacts.map((service, idx) => (
-                        <polygon
-                          key={`service-${idx}`}
-                          points={`${service.x - 5},${service.y + 5} ${service.x + 5},${service.y + 5} ${service.x},${service.y - 5}`}
-                          fill="#10b981"
-                          opacity="0.8"
-                        />
-                      ))}
-                    </svg>
+                    <div className="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-2">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-3.5 h-3.5 rounded-full" style={{ background: '#f59e0b' }}></div>
+                        <span className="text-sm text-gray-700">Topspin en coup droit (est.)</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-3.5 h-3.5 rounded-full" style={{ background: '#3b82f6' }}></div>
+                        <span className="text-sm text-gray-700">Topspin en revers (est.)</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-3.5 h-3.5 rounded-full" style={{ background: '#eab308' }}></div>
+                        <span className="text-sm text-gray-700">Coup en coup droit (est.)</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-3.5 h-3.5 rounded-full" style={{ background: '#22c55e' }}></div>
+                        <span className="text-sm text-gray-700">Coup en revers (est.)</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-3.5 h-3.5 rounded-full" style={{ background: '#e5e7eb' }}></div>
+                        <span className="text-sm text-gray-700">Coup inconnu</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-400 text-center mt-3">
+                      Chaque point est un rebond détecté par le suivi de balle, projeté sur le
+                      gabarit ITTF (2,74 × 1,525 m) via l'homographie de la table. Survolez un
+                      point pour l'horodatage et la vitesse. Le type de coup (topspin, coup
+                      droit / revers) est une estimation : incrusté dans la{' '}
+                      <strong>vidéo « Placement des coups »</strong> de l'onglet Match Compilé.
+                    </p>
+                  </>
+                ) : (
+                  <div className="text-center py-10 text-gray-500">
+                    <p className="mb-2">
+                      Aucun rebond projeté sur la table pour cette analyse.
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      La table doit être entièrement visible et bien éclairée pour que
+                      l'homographie soit calculée. {num(events.ball_bounce, 0)} rebonds ont quand
+                      même été détectés (sans position sur la table).
+                    </p>
                   </div>
-
-                  <div className="mt-6 flex justify-center space-x-8">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
-                      <span className="text-sm text-gray-700">Vos impacts</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-4 h-4 bg-red-500 rounded-full"></div>
-                      <span className="text-sm text-gray-700">Impacts adversaire</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-0 h-0 border-l-2 border-r-2 border-b-4 border-l-transparent border-r-transparent border-b-green-500"></div>
-                      <span className="text-sm text-gray-700">Services</span>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-400 text-center mt-3">
-                    Répartition indicative reconstituée à partir des événements détectés
-                    (l'ordre réel des impacts n'est pas encore suivi par l'analyse).
-                  </p>
-                </div>
+                )}
 
                 <div className="grid md:grid-cols-4 gap-4 mt-6">
                   <StatTile
-                    value={num(events.ball_bounce, 0)}
-                    label="Rebonds détectés"
+                    value={num(matchAnalysis?.bounces?.length, 0)}
+                    label="Rebonds sur table"
                     colorClass="text-blue-600"
                     bgClass="bg-blue-50"
                   />
@@ -1346,60 +1590,57 @@ const ResultsPage = ({ results, onReset }) => {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
 
-          {/* ---------------- Analyse de Match ---------------- */}
-          <TabsContent value="match-analysis" className="space-y-8">
-            {results.match_analysis ? (
+            {matchAnalysis ? (
               <>
                 <div className="grid md:grid-cols-4 gap-4">
                   <StatTile
-                    value={num(results.match_analysis.rally_summary?.total_rallies, 0)}
+                    value={num(matchAnalysis.rally_summary?.total_rallies, 0)}
                     label="Échanges détectés"
                     colorClass="text-blue-600"
                     bgClass="bg-blue-50"
                   />
                   <StatTile
-                    value={num(results.match_analysis.rally_summary?.average_strokes, 0)}
+                    value={num(matchAnalysis.rally_summary?.average_strokes, 0)}
                     label="Coups / échange (moy.)"
                     colorClass="text-green-600"
                     bgClass="bg-green-50"
                   />
                   <StatTile
                     value={
-                      results.match_analysis.ball_speed?.max_speed_ms != null
-                        ? `${results.match_analysis.ball_speed.max_speed_ms} m/s`
-                        : num(results.match_analysis.ball_speed?.max_speed_pixels_per_frame, 0)
+                      matchAnalysis.ball_speed?.max_speed_ms != null
+                        ? `${matchAnalysis.ball_speed.max_speed_ms} m/s`
+                        : num(matchAnalysis.ball_speed?.max_speed_pixels_per_frame, 0)
                     }
                     label="Vitesse max de balle"
                     colorClass="text-purple-600"
                     bgClass="bg-purple-50"
                   />
                   <StatTile
-                    value={num(results.match_analysis.bounces?.length, 0)}
+                    value={num(matchAnalysis.bounces?.length, 0)}
                     label="Rebonds sur table"
                     colorClass="text-orange-600"
                     bgClass="bg-orange-50"
                   />
                 </div>
 
-                {results.match_analysis.placement?.available && (
+                {matchAnalysis.placement?.available && (
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center space-x-2">
                         <Target className="w-5 h-5 text-blue-500" />
-                        <span>Placement de la balle sur la table</span>
+                        <span>Heatmap par zones de la table</span>
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="flex flex-wrap justify-center gap-8">
-                        {results.match_analysis.placement.heatmap_grid.map((half, h) => (
+                        {matchAnalysis.placement.heatmap_grid.map((half, h) => (
                           <div key={`half-${h}`} className="text-center">
                             <svg width="240" height="160" viewBox="0 0 240 160" className="border border-gray-300 rounded">
                               <rect x="0" y="0" width="240" height="160" fill="#2563eb" opacity="0.08" />
                               {half.map((row, l) =>
                                 row.map((count, w) => {
-                                  const maxCount = Math.max(1, ...results.match_analysis.placement.heatmap_grid.flat(2));
+                                  const maxCount = Math.max(1, ...matchAnalysis.placement.heatmap_grid.flat(2));
                                   const intensity = count / maxCount;
                                   return (
                                     <rect
@@ -1425,7 +1666,7 @@ const ResultsPage = ({ results, onReset }) => {
                         ))}
                       </div>
                       <div className="mt-4 flex flex-wrap justify-center gap-2">
-                        {Object.entries(results.match_analysis.placement.zones || {}).map(
+                        {Object.entries(matchAnalysis.placement.zones || {}).map(
                           ([zone, count]) => (
                             <Badge key={zone} variant="secondary">
                               {zone} : {count}
@@ -1433,7 +1674,7 @@ const ResultsPage = ({ results, onReset }) => {
                           )
                         )}
                       </div>
-                      {!results.match_analysis.table_detected && (
+                      {!matchAnalysis.table_detected && (
                         <p className="text-xs text-gray-400 text-center mt-3">
                           Table non détectée : vitesse estimée en pixels, placement indisponible.
                         </p>
@@ -1446,34 +1687,35 @@ const ResultsPage = ({ results, onReset }) => {
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
                       <BarChart3 className="w-5 h-5 text-green-500" />
-                      <span>Phases et moments clés</span>
+                      <span>Longueur des échanges</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="grid md:grid-cols-3 gap-4">
                       <div className="p-4 bg-gray-50 rounded-lg text-center">
                         <div className="text-2xl font-bold text-gray-800">
-                          {num(results.match_analysis.rally_summary?.courts_1_3_coups, 0)}
+                          {num(matchAnalysis.rally_summary?.courts_1_3_coups, 0)}
                         </div>
                         <div className="text-sm text-gray-600">Échanges courts (1-3 coups)</div>
                       </div>
                       <div className="p-4 bg-gray-50 rounded-lg text-center">
                         <div className="text-2xl font-bold text-gray-800">
-                          {num(results.match_analysis.rally_summary?.moyens_4_7_coups, 0)}
+                          {num(matchAnalysis.rally_summary?.moyens_4_7_coups, 0)}
                         </div>
                         <div className="text-sm text-gray-600">Échanges moyens (4-7 coups)</div>
                       </div>
                       <div className="p-4 bg-gray-50 rounded-lg text-center">
                         <div className="text-2xl font-bold text-gray-800">
-                          {num(results.match_analysis.rally_summary?.longs_8_plus, 0)}
+                          {num(matchAnalysis.rally_summary?.longs_8_plus, 0)}
                         </div>
                         <div className="text-sm text-gray-600">Échanges longs (8+ coups)</div>
                       </div>
                     </div>
-                    {results.match_analysis.key_moments?.longest_rally && (
+                    {matchAnalysis.key_moments?.longest_rally && (
                       <p className="text-sm text-gray-600 mt-4">
-                        Plus long échange : <strong>{results.match_analysis.key_moments.longest_rally.stroke_count} coups</strong> à{' '}
-                        {results.match_analysis.key_moments.longest_rally.start_time}s.
+                        Plus long échange : <strong>{matchAnalysis.key_moments.longest_rally.stroke_count} coups</strong> à{' '}
+                        {formatDuration(matchAnalysis.key_moments.longest_rally.start_time)} — visible dans l'onglet
+                        Meilleurs Échanges.
                       </p>
                     )}
                   </CardContent>

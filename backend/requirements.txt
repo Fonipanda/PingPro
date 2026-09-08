@@ -6,6 +6,9 @@ python-dotenv>=1.0.0
 aiofiles>=24.0.0
 pydantic>=2.13.5
 
+# Requis par backend/tools/integration_test.py (TestClient de starlette)
+httpx2>=1.0.0
+
 # Computer vision / ML
 numpy>=1.24.0
 opencv-python>=4.8.0
@@ -18,6 +21,9 @@ scipy>=1.10.0
 onnxruntime>=1.16.0
 # Windows iGPU AMD : décommenter pour l'accélération DirectML
 # onnxruntime-directml>=1.16.0
+
+# Binaire ffmpeg embarqué (repli si ffmpeg absent du PATH)
+imageio-ffmpeg>=0.5.1
 
 # Optional: only required if you enable OpenAI pose reports
 # openai>=1.0.0

@@ -58,12 +58,10 @@ flowchart LR
 
 ## Prérequis
 
-- Python **3.11 ou 3.12** recommandé (Python 3.14+ n'est pas supporté par toutes les dépendances scientifiques).
+- Python **3.11 ou 3.12** recommandé. Le backend est **validé sous Python 3.14** (environnements `.venv` racine et `backend/venv` reconstruit) ; si un conflit de wheel apparaît sur votre machine, 3.11/3.12 reste l'option de repli.
 - Node.js **20+**.
 - Yarn.
 - FFmpeg (optionnel, pour les compilations vidéo).
-
-> **Note Python 3.14** : si vous souhaitez conserver Python 3.14, commencez par tester l'interface en mode démo (voir ci-dessous) pendant que les dépendances backend sont ajustées.
 
 ---
 

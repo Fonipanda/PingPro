@@ -19,6 +19,13 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 ### Corrections
 - (à compléter)
 
+## [2.1.1] - 2026-09-08
+
+### Corrections
+- Environnement backend `backend/venv` cassé (lanceur retombé sur Python 3.14 après désinstallation de Python 3.11, paquets compilés cp311 incompatibles) : venv reconstruit intégralement sur Python 3.14, backend validé par le test d'intégration complet
+- `backend/requirements.txt` : ajout de `httpx2` (requis par le TestClient de starlette pour `backend/tools/integration_test.py`)
+- README : note Python 3.14 mise à jour (backend validé sous 3.14, repli 3.11/3.12 documenté)
+
 ## [2.1.0] - 2026-09-08
 
 ### Ajouts

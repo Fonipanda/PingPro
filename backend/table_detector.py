@@ -134,9 +134,13 @@ class TableDetector:
             logger.info("Homographie de table invalide : stats de match en coordonnées pixels.")
             return None
 
+        H_inv, _ = cv2.findHomography(TARGET_CORNERS, quad.astype(np.float32))
+        if H_inv is None or not np.isfinite(H_inv).all():
+            H_inv = None
+
         self._cached_homography = H
         self._cached_quad = quad
-        return {"quad": quad, "H": H}
+        return {"quad": quad, "H": H, "H_inv": H_inv}
 
     @staticmethod
     def image_points_to_table(
