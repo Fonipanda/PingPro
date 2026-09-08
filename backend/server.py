@@ -1031,7 +1031,11 @@ async def _process_video_analysis(analysis_id: str, video_path: str, params: Ana
                         if placement_path:
                             video_compilations["placement_overlay"] = placement_path
 
-                pose_frames_overlay = pose_results.get("frames") or [] if "error" not in pose_results else []
+                pose_frames_overlay = (
+                    pose_results.get("frames") or []
+                    if isinstance(pose_results, dict) and "error" not in pose_results
+                    else []
+                )
                 if pose_frames_overlay and ffmpeg_path:
                     pose_path = generate_pose_overlay(
                         source,

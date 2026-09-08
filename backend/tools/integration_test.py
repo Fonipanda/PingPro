@@ -72,6 +72,28 @@ def main():
     print("pose_report présent:", bool(res.get("pose_report")))
     assert res.get("training_plan"), "training_plan absent"
 
+    # FFmpeg présent : le montage auto et l'overlay de placement doivent être générés
+    from video_overlay import get_ffmpeg_path
+
+    if get_ffmpeg_path():
+        comps = res.get("video_compilations") or {}
+        assert comps.get("auto_edit"), "auto_edit attendu (FFmpeg présent)"
+        if ma.get("bounces"):
+            assert comps.get("placement_overlay"), "placement_overlay attendu (rebonds détectés)"
+        # pose_overlay : optionnel (la vidéo synthétique ne contient pas de joueur)
+        print("ffmpeg OK — overlays:", "placement_overlay" in comps, "| pose_overlay:", "pose_overlay" in comps)
+
+    # Score : cohérence progression / échanges détectés
+    scoring = res.get("table_tennis_scoring") or {}
+    assert scoring.get("estimated") is True, "score doit être badgé estimation"
+    detected = ma["rally_summary"]["total_rallies"]
+    total_points = (scoring.get("match_statistics") or {}).get("total_points")
+    if detected > 0:
+        assert total_points == min(25, max(1, detected)), (
+            f"total_points ({total_points}) != échanges détectés ({detected})"
+        )
+    print("score estimé:", (scoring.get("final_score") or {}), "| total points:", total_points)
+
     # Endpoint /api/plan
     plan = client.post(
         "/api/plan",

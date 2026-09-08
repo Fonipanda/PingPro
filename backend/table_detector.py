@@ -95,7 +95,11 @@ class TableDetector:
         quads détectés (médiane par coin) et construit l'homographie.
         """
         if self._cached_homography is not None:
-            return {"quad": self._cached_quad, "H": self._cached_homography}
+            return {
+                "quad": self._cached_quad,
+                "H": self._cached_homography,
+                "H_inv": getattr(self, "_cached_H_inv", None),
+            }
 
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
@@ -139,6 +143,7 @@ class TableDetector:
             H_inv = None
 
         self._cached_homography = H
+        self._cached_H_inv = H_inv
         self._cached_quad = quad
         return {"quad": quad, "H": H, "H_inv": H_inv}
 

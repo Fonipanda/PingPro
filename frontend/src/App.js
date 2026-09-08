@@ -582,33 +582,6 @@ const ResultsPage = ({ results, onReset }) => {
     }));
   }, [metrics]);
 
-  // Deterministic ball impact layout on the table (top view)
-  const ballImpacts = useMemo(() => {
-    const bounces = Math.min(Math.round(num(events.ball_bounce, 0)), 24);
-    return Array.from({ length: bounces }, (_, i) => {
-      const isPlayer = i % 2 === 0;
-      const x = 60 + (i % 4) * 85 + (isPlayer ? 25 : 0);
-      const y = 20 + (isPlayer ? 115 : 40) + (i % 3) * 14;
-      return {
-        x: Math.min(372, x),
-        y: Math.min(176, y),
-        player: isPlayer ? 'you' : 'opponent',
-      };
-    });
-  }, [events.ball_bounce]);
-
-  const serviceImpacts = useMemo(() => {
-    const serves = Math.min(Math.round(num(events.serve, 0)), 10);
-    return Array.from({ length: serves }, (_, i) => {
-      const isYou = i % 2 === 0;
-      return {
-        x: 20 + 360 * (0.3 + (i % 5) / 5 * 0.4),
-        y: 20 + (isYou ? 160 * 0.8 : 160 * 0.2),
-        player: isYou ? 'you' : 'opponent',
-      };
-    });
-  }, [events.serve]);
-
   const strokeList = Array.isArray(stroke.identified_strokes) ? stroke.identified_strokes : [];
 
   return (
@@ -632,7 +605,7 @@ const ResultsPage = ({ results, onReset }) => {
 
       <div className="container mx-auto px-6 py-8">
         <Tabs defaultValue="match-compilation" className="space-y-8">
-          <TabsList className="grid w-full grid-cols-3 md:grid-cols-7 bg-white shadow-sm">
+          <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 bg-white shadow-sm">
             <TabsTrigger value="match-compilation" className="flex items-center space-x-2">
               <Video className="w-4 h-4" />
               <span>Match Compilé</span>
@@ -650,12 +623,8 @@ const ResultsPage = ({ results, onReset }) => {
               <span>Meilleurs Échanges</span>
             </TabsTrigger>
             <TabsTrigger value="ball-impacts" className="flex items-center space-x-2">
-              <Target className="w-4 h-4" />
-              <span>Impacts Balle</span>
-            </TabsTrigger>
-            <TabsTrigger value="match-analysis" className="flex items-center space-x-2">
               <BarChart3 className="w-4 h-4" />
-              <span>Analyse de Match</span>
+              <span>Impacts Balle & Placement</span>
             </TabsTrigger>
             <TabsTrigger value="pose-analysis" className="flex items-center space-x-2">
               <Activity className="w-4 h-4" />
@@ -1732,6 +1701,17 @@ const ResultsPage = ({ results, onReset }) => {
 
           {/* ---------------- Coach IA Pose ---------------- */}
           <TabsContent value="pose-analysis" className="space-y-8">
+            {compilations.pose_overlay && (
+              <VideoCard
+                title="Squelette superposé — vidéo compilée"
+                badge="Pose incrustée"
+                description="Le squelette du joueur analysé est incrusté en continu sur la compilation des échanges"
+                videoType="pose_overlay"
+                compilations={compilations}
+                analysisId={analysisId}
+                iconColor="text-green-500"
+              />
+            )}
             <PoseAnalysis results={results} />
           </TabsContent>
         </Tabs>

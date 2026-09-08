@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, Component } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { Badge } from './components/ui/badge';
@@ -97,6 +97,56 @@ function Skeleton3D({ landmarks, color = '#00ff88', isWorld = false }) {
         </lineSegments>
       )}
     </group>
+  );
+}
+
+// Évite le crash "Cannot read properties of null (reading 'addEventListener')"
+// des OrbitControls quand le Canvas est démonté (changement d'onglet) : l'erreur
+// est capturée et l'affichage dégrade proprement au lieu de casser la page.
+class CanvasErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="h-full w-full flex items-center justify-center text-sm text-gray-400">
+          Visualisation 3D indisponible sur cet environnement.
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function PoseCanvas({ landmarks, isWorld = false, color, height = 'h-[400px]' }) {
+  if (!landmarks || landmarks.length === 0) {
+    return (
+      <div className={`${height} w-full rounded-lg overflow-hidden border flex items-center justify-center`}>
+        <p className="text-sm text-gray-400">
+          Aucune pose détectée au moment du contact pour cette vidéo.
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className={`${height} w-full rounded-lg overflow-hidden border`}>
+      <CanvasErrorBoundary>
+        <Canvas camera={{ position: [0, 0, 2.5], fov: 50 }}>
+          <ambientLight intensity={0.8} />
+          <directionalLight position={[2, 2, 2]} />
+          <gridHelper args={[4, 20]} />
+          <OrbitControls />
+          <Skeleton3D landmarks={landmarks} isWorld={isWorld} color={color} />
+        </Canvas>
+      </CanvasErrorBoundary>
+    </div>
   );
 }
 
@@ -263,24 +313,19 @@ export default function PoseAnalysis({ results }) {
               <CardTitle>Vue 3D interactive au contact</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-[400px] w-full rounded-lg overflow-hidden border">
-                <Canvas camera={{ position: [0, 0, 2.5], fov: 50 }}>
-                  <ambientLight intensity={0.8} />
-                  <directionalLight position={[2, 2, 2]} />
-                  <gridHelper args={[4, 20]} />
-                  <OrbitControls />
-                  {contactFrame?.world_poses?.[0] ? (
-                    <Skeleton3D landmarks={contactFrame.world_poses[0]} isWorld color="#00ff88" />
-                  ) : contactFrame?.poses?.[0] ? (
-                    <Skeleton3D landmarks={contactFrame.poses[0]} color="#00ff88" />
-                  ) : null}
-                </Canvas>
-              </div>
+              <PoseCanvas
+                landmarks={
+                  contactFrame?.world_poses?.[0] || contactFrame?.poses?.[0] || null
+                }
+                isWorld={Boolean(contactFrame?.world_poses?.[0])}
+                color="#00ff88"
+              />
               <p className="text-sm text-gray-500 mt-2">
+                Posture du joueur au moment du contact, vue dans l'espace — tournez en faisant
+                glisser, zoomez à la molette pour examiner l'alignement épaules/hanches.{' '}
                 {poseAnalysis.has_world_landmarks
                   ? 'Reconstruction 3D réelle (landmarks monde MediaPipe).'
-                  : 'Projection 3D à partir des landmarks image.'}{' '}
-                Faites glisser pour tourner, utilisez la molette pour zoomer.
+                  : 'Projection 3D à partir des landmarks image.'}
               </p>
             </CardContent>
           </Card>
@@ -296,33 +341,18 @@ export default function PoseAnalysis({ results }) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <h4 className="font-semibold mb-2">Votre mouvement</h4>
-                  <div className="h-[300px] w-full rounded-lg overflow-hidden border">
-                    <Canvas camera={{ position: [0, 0, 2.5], fov: 50 }}>
-                      <ambientLight intensity={0.8} />
-                      <directionalLight position={[2, 2, 2]} />
-                      <gridHelper args={[4, 20]} />
-                      <OrbitControls />
-                      {contactFrame?.world_poses?.[0] ? (
-                        <Skeleton3D landmarks={contactFrame.world_poses[0]} isWorld color="#3b82f6" />
-                      ) : contactFrame?.poses?.[0] ? (
-                        <Skeleton3D landmarks={contactFrame.poses[0]} color="#3b82f6" />
-                      ) : null}
-                    </Canvas>
-                  </div>
+                  <PoseCanvas
+                    height="h-[300px]"
+                    landmarks={
+                      contactFrame?.world_poses?.[0] || contactFrame?.poses?.[0] || null
+                    }
+                    isWorld={Boolean(contactFrame?.world_poses?.[0])}
+                    color="#3b82f6"
+                  />
                 </div>
                 <div>
                   <h4 className="font-semibold mb-2">Modèle de référence</h4>
-                  <div className="h-[300px] w-full rounded-lg overflow-hidden border">
-                    <Canvas camera={{ position: [0, 0, 2.5], fov: 50 }}>
-                      <ambientLight intensity={0.8} />
-                      <directionalLight position={[2, 2, 2]} />
-                      <gridHelper args={[4, 20]} />
-                      <OrbitControls />
-                      {referenceLandmarks && (
-                        <Skeleton3D landmarks={referenceLandmarks} color="#a855f7" />
-                      )}
-                    </Canvas>
-                  </div>
+                  <PoseCanvas height="h-[300px]" landmarks={referenceLandmarks} color="#a855f7" />
                 </div>
               </div>
 
