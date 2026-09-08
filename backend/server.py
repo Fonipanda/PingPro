@@ -33,7 +33,6 @@ from pydantic import BaseModel
 from starlette.middleware.cors import CORSMiddleware
 
 from ttnet_analysis import analyze_video_with_ttn
-from video_processor import VideoProcessor
 from pose_analysis import analyze_video_pose
 from pose_reference import compare_with_reference, suggest_improvements
 from table_detector import TableDetector
@@ -1022,17 +1021,8 @@ async def _process_video_analysis(analysis_id: str, video_path: str, params: Ana
             players_results["frames"] = sampled
             players_results["summary"]["frames_returned"] = len(sampled)
 
-        # 2. Video processor (rallies + technical analysis)
-        # Non bloquant : les compilations servies sont générées séparément
-        try:
-            video_processor = VideoProcessor()
-            video_processing_results = await video_processor.process_video_complete(
-                video_path, generate_compilations=False
-            )
-        except Exception as e:
-            logger.warning(f"Video processor failed (non-blocking): {e}")
-            video_processing_results = {}
-
+        # 2. (supprimé) VideoProcessor simulé : le pipeline sert désormais
+        # exclusivement les données réelles (TTNet + match_analysis + pose).
         analysis_status[analysis_id].progress = 50.0
         analysis_status[analysis_id].current_step = "Analyse de la pose et biomécanique..."
 
@@ -1203,7 +1193,7 @@ async def _process_video_analysis(analysis_id: str, video_path: str, params: Ana
             highlights_timestamps=highlights,
             confidence_score=ttnet_results.get("match_statistics", {}).get("ball_detection_rate", 0),
             video_compilations=video_compilations,
-            lexicon_analysis=video_processing_results.get("technical_analysis", {}),
+            lexicon_analysis=None,
             table_tennis_scoring=_apply_table_tennis_scoring(
                 ttnet_results, match_analysis, params.player_side
             ),

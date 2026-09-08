@@ -996,17 +996,19 @@ const ResultsPage = ({ results, onReset }) => {
                             data={[
                               {
                                 name: 'Frappes adverses (impacts votre camp)',
-                                Coups:
-                                  (matchAnalysis?.placement?.heatmap_grid || []).length > 0
-                                    ? matchAnalysis.placement.heatmap_grid.flat(2).reduce((a, b) => a + b, 0) -
-                                      (matchAnalysis.placement.heatmap_grid[0] || []).flat().reduce((a, b) => a + b, 0)
-                                    : 0,
+                                Coups: num(
+                                  matchAnalysis?.player_stats?.[scoring.user_side || 'droite']?.bounces,
+                                  0
+                                ),
                               },
                               {
                                 name: 'Impacts camp adverse (vos frappes)',
-                                Coups: (matchAnalysis?.placement?.heatmap_grid?.[0] || [])
-                                  .flat()
-                                  .reduce((a, b) => a + b, 0),
+                                Coups: num(
+                                  matchAnalysis?.player_stats?.[
+                                    (scoring.user_side || 'droite') === 'gauche' ? 'droite' : 'gauche'
+                                  ]?.bounces,
+                                  0
+                                ),
                               },
                             ]}
                             layout="vertical"
@@ -1702,8 +1704,48 @@ const ResultsPage = ({ results, onReset }) => {
               </CardHeader>
               <CardContent>
                 {(matchAnalysis?.bounces || []).length > 0 ? (
-                  <>
+                  (() => {
+                    // Répartition des rebonds : % par tiers de longueur (colonnes, au-dessus)
+                    // et par tiers de largeur (rangées, à gauche) — repère ITTF en mètres.
+                    const bounces = matchAnalysis.bounces || [];
+                    const totalB = bounces.length;
+                    const L = 1.37, W = 0.7625;
+                    const lengthCounts = [0, 0, 0];   // x < -L/3 | centre | x > L/3
+                    const widthCounts = [0, 0, 0];    // y < -W/3 (revers) | centre | y > W/3 (coup droit)
+                    bounces.forEach((b) => {
+                      const x = num(b.table_x, 0);
+                      const y = num(b.table_y, 0);
+                      if (x < -L / 3) lengthCounts[0]++;
+                      else if (x > L / 3) lengthCounts[2]++;
+                      else lengthCounts[1]++;
+                      if (y < -W / 3) widthCounts[0]++;
+                      else if (y > W / 3) widthCounts[2]++;
+                      else widthCounts[1]++;
+                    });
+                    const toPct = (c) => (totalB ? Math.round((c / totalB) * 100) : 0);
+                    const lengthPcts = lengthCounts.map(toPct);
+                    const widthPcts = widthCounts.map(toPct);
+                    return (
+                      <>
                     <div className="flex justify-center">
+                      <div className="inline-block">
+                        {/* % par tiers de longueur (au-dessus de la table) */}
+                        <div className="grid grid-cols-3 mb-1" style={{ width: 600 }}>
+                          {lengthPcts.map((p, i) => (
+                            <span key={`lenpct-${i}`} className="text-center text-sm font-medium text-gray-600">
+                              {p}%
+                            </span>
+                          ))}
+                        </div>
+                        <div className="flex">
+                          {/* % par tiers de largeur (à gauche de la table) */}
+                          <div className="flex flex-col justify-around mr-1 text-right" style={{ height: 334 }}>
+                            {widthPcts.map((p, i) => (
+                              <span key={`wdpct-${i}`} className="text-sm font-medium text-gray-600">
+                                {p}%
+                              </span>
+                            ))}
+                          </div>
                       <svg
                         width="600"
                         height="334"
@@ -1741,24 +1783,26 @@ const ResultsPage = ({ results, onReset }) => {
                           );
                         })}
                       </svg>
+                        </div>
+                      </div>
                     </div>
 
                     <div className="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-2">
                       <div className="flex items-center space-x-2">
                         <div className="w-3.5 h-3.5 rounded-full" style={{ background: '#f59e0b' }}></div>
-                        <span className="text-sm text-gray-700">Topspin en coup droit (est.)</span>
+                        <span className="text-sm text-gray-700">Topspin en coup droit</span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <div className="w-3.5 h-3.5 rounded-full" style={{ background: '#3b82f6' }}></div>
-                        <span className="text-sm text-gray-700">Topspin en revers (est.)</span>
+                        <span className="text-sm text-gray-700">Topspin en revers</span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <div className="w-3.5 h-3.5 rounded-full" style={{ background: '#eab308' }}></div>
-                        <span className="text-sm text-gray-700">Coup en coup droit (est.)</span>
+                        <span className="text-sm text-gray-700">Coupé en coup droit</span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <div className="w-3.5 h-3.5 rounded-full" style={{ background: '#22c55e' }}></div>
-                        <span className="text-sm text-gray-700">Coup en revers (est.)</span>
+                        <span className="text-sm text-gray-700">Coupé en revers</span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <div className="w-3.5 h-3.5 rounded-full" style={{ background: '#e5e7eb' }}></div>
@@ -1772,7 +1816,9 @@ const ResultsPage = ({ results, onReset }) => {
                       droit / revers) est une estimation : incrusté dans la{' '}
                       <strong>vidéo « Placement des coups »</strong> de l'onglet Match Compilé.
                     </p>
-                  </>
+                      </>
+                    );
+                  })()
                 ) : (
                   <div className="text-center py-10 text-gray-500">
                     <p className="mb-2">
@@ -1898,65 +1944,6 @@ const ResultsPage = ({ results, onReset }) => {
                     bgClass="bg-orange-50"
                   />
                 </div>
-
-                {matchAnalysis.placement?.available && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center space-x-2">
-                        <Target className="w-5 h-5 text-blue-500" />
-                        <span>Heatmap par zones de la table</span>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex flex-wrap justify-center gap-8">
-                        {matchAnalysis.placement.heatmap_grid.map((half, h) => (
-                          <div key={`half-${h}`} className="text-center">
-                            <svg width="240" height="160" viewBox="0 0 240 160" className="border border-gray-300 rounded">
-                              <rect x="0" y="0" width="240" height="160" fill="#2563eb" opacity="0.08" />
-                              {half.map((row, l) =>
-                                row.map((count, w) => {
-                                  const maxCount = Math.max(1, ...matchAnalysis.placement.heatmap_grid.flat(2));
-                                  const intensity = count / maxCount;
-                                  return (
-                                    <rect
-                                      key={`z-${h}-${l}-${w}`}
-                                      x={l * 80}
-                                      y={w * 53.3}
-                                      width="80"
-                                      height="53.3"
-                                      fill={count > 0 ? '#3b82f6' : 'transparent'}
-                                      opacity={count > 0 ? 0.15 + 0.75 * intensity : 0}
-                                      stroke="#fff"
-                                      strokeWidth="1"
-                                    />
-                                  );
-                                })
-                              )}
-                              <line x1="0" y1="80" x2="240" y2="80" stroke="#fff" strokeWidth="2" />
-                            </svg>
-                            <p className="text-sm text-gray-600 mt-2">
-                              {h === 0 ? 'Moitié 1' : 'Moitié 2'} — colonnes : fond → près du filet
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="mt-4 flex flex-wrap justify-center gap-2">
-                        {Object.entries(matchAnalysis.placement.zones || {}).map(
-                          ([zone, count]) => (
-                            <Badge key={zone} variant="secondary">
-                              {zone} : {count}
-                            </Badge>
-                          )
-                        )}
-                      </div>
-                      {!matchAnalysis.table_detected && (
-                        <p className="text-xs text-gray-400 text-center mt-3">
-                          Table non détectée : vitesse estimée en pixels, placement indisponible.
-                        </p>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
 
                 <Card>
                   <CardHeader>

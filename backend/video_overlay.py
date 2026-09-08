@@ -21,13 +21,16 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-# Palette BGR par type de coup estimé (cohérente avec la légende frontend)
+# Palette BGR par type de coup estimé — dérivée exactement de la palette
+# hexadécimale du frontend (App.js colorMap) pour une légende cohérente :
+# topspin_coup_droit #f59e0b | topspin_revers #3b82f6 | coup_droit #eab308
+# revers #22c55e | inconnu #e5e7eb
 STROKE_COLORS_BGR: Dict[str, Tuple[int, int, int]] = {
-    "topspin_coup_droit": (36, 118, 249),   # orange
-    "topspin_revers": (235, 152, 35),       # bleu
-    "coup_droit": (80, 170, 60),            # vert
-    "revers": (60, 200, 230),               # jaune
-    "inconnu": (240, 240, 240),             # blanc
+    "topspin_coup_droit": (11, 158, 245),   # orange  #f59e0b
+    "topspin_revers": (246, 130, 59),       # bleu    #3b82f6
+    "coup_droit": (8, 179, 234),            # jaune   #eab308
+    "revers": (94, 197, 34),                # vert    #22c55e
+    "inconnu": (235, 231, 229),             # blanc   #e5e7eb
 }
 
 # Connexions du squelette MediaPipe Pose (indices de landmarks)

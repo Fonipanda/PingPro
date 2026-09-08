@@ -12,10 +12,10 @@ Les modules temps réel, streaming et WebSocket ont été retirés pour simplifi
 ## Fonctionnalités
 
 - Upload de vidéos de tennis de table (MP4, AVI, MOV, MKV).
-- **Suivi de balle** : détecteur YOLO exporté en ONNX (`backend/models/ball_yolo.onnx`) avec suivi prédictif, combiné à l'heuristique TTNet en pipeline hybride ; repli automatique sur l'heuristique seule si le modèle est absent.
+- **Suivi de balle** : détecteur YOLO exporté en ONNX (`backend/models/ball_yolo.onnx`) avec suivi prédictif, combiné à l'heuristique TTNet en pipeline hybride ; repli automatique sur l'heuristique seule si le modèle est absent (état actuel : heuristique active, voir `Changelog.md` Phase 2).
 - **Analyse de match** (détection de table + homographie) :
   - Segmentation automatique des échanges.
-  - Carte de placement de la balle par zones (repère réel ITTF, 2,74 × 1,525 m).
+  - Carte de placement des rebonds sur le gabarit réel ITTF (2,74 × 1,525 m) avec pourcentages de répartition par zone.
   - Vitesses de balle réelles en m/s (pixels/s si la table n'est pas détectée).
   - Détection des rebonds et moments clés (plus long échange, vitesse max).
 - **Analyse de pose avec MediaPipe Pose** :
@@ -25,7 +25,7 @@ Les modules temps réel, streaming et WebSocket ont été retirés pour simplifi
   - Chaîne cinétique (bassin → épaules → avant-bras).
   - Comparaison avec une bibliothèque de références JSON (`backend/references/`) via DTW.
 - Dashboard interactif avec les onglets :
-  - Match compilé (avec montage auto des échanges), points forts/faibles, meilleurs échanges, impacts balle, **Analyse de Match** (heatmap de placement, vitesses, buckets d'échanges).
+  - Match compilé (avec montage auto des échanges), points forts/faibles, meilleurs échanges, impacts balle, **Analyse de Match** (carte de placement, vitesses, buckets d'échanges).
   - **Coach IA Pose** : angles, squelette 2D, vue 3D interactive, comparaison, rapport.
 - Génération de compilations vidéo, dont le **montage auto** des échanges détectés (FFmpeg requis).
 - Score de match estimé selon les règles du tennis de table.

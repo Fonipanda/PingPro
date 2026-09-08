@@ -214,7 +214,9 @@ def _classify_stroke_side(speed_ms: float, table_y: float, speed_median_ms: floa
     if left_handed:
         fh = not fh
     side = "coup_droit" if fh else "revers"
-    return f"{kind}_{side}"
+    # Clés canoniques partagées avec le frontend (colorMap) et les overlays :
+    # topspin_coup_droit | topspin_revers | coup_droit | revers
+    return f"topspin_{side}" if kind == "topspin" else side
 
 
 def _smooth_series(values: List[float], window: int = 3) -> List[float]:

@@ -9,15 +9,20 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 ### Prévu
 - Déploiement en production (hébergement backend + frontend)
 - Mise en place d'une CI (lint, tests backend/frontend, build Docker)
+- Phase 2 (fine-tuning balle) : remplacer le modèle par défaut — téléchargement Roboflow bloqué par la clé API / le format d'URL ; tant que `backend/models/ball_yolo.onnx` n'est pas fourni, la détection balle repose sur l'heuristique TTNet
+- Phase 3 (différé) : filtre de Kalman joueurs + fallback Hough table ; le suivi COCO actuel suffit pour l'attribution gauche/droite
 
 ### Ajouts
-- (à compléter)
+- **Mode réel intégral** : suppression du module simulé `VideoProcessor` du pipeline d'analyse (`server.py`) — les résultats ne contiennent plus aucune donnée générée aléatoirement, uniquement TTNet + match_analysis + pose
+- **Carte de placement conforme au visuel de référence** : pourcentages de répartition des rebonds autour de la table (3 tiers de longueur au-dessus, 3 tiers de largeur à gauche), légende « Topspin / Coupé en coup droit / revers » — onglet Impacts Balle & Placement
 
 ### Modifications
-- (à compléter)
+- `_classify_stroke_side` (`match_analysis.py`) : clés canoniques partagées frontend/overlay — `topspin_coup_droit`, `topspin_revers`, `coup_droit`, `revers` (les coups non-topspin n'apparaissent plus comme « inconnu »)
+- Palette d'incrustation vidéo (`video_overlay.STROKE_COLORS_BGR`) : dérivée exactement de la palette hexadécimale du frontend (orange/bleu/jaune/vert/blanc)
+- Statistique « impacts par camp » du frontend : basée sur les rebonds réels par camp (`player_stats`) au lieu de la grille de zones
 
-### Corrections
-- (à compléter)
+### Suppressions
+- Carte « Heatmap par zones de la table » du frontend (remplacée par la carte de placement des rebonds)
 
 ## [2.1.1] - 2026-09-08
 
