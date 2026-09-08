@@ -6,8 +6,6 @@ Implements: Ball Detection, Player Segmentation, Event Spotting
 
 import cv2
 import numpy as np
-import torch
-import torchvision.transforms as transforms
 from typing import List, Dict, Tuple, Optional, Any
 import json
 import logging
@@ -349,6 +347,8 @@ class EventSpotter:
         self.event_history = deque(maxlen=100)
         self.ball_trajectory = deque(maxlen=30)
         self.velocity_threshold = 20  # pixels per frame
+        self.last_rally_end_time = 0.0
+        self.rally_end_cooldown = 3.0  # seconds between rally_end events
         
     def detect_events(self, frame: np.ndarray, ball_position: Optional[Tuple[int, int, float]], 
                      segmentation_masks: Dict[str, np.ndarray]) -> List[Dict[str, Any]]:
@@ -511,17 +511,19 @@ class EventSpotter:
         """Detect end of rally (ball lost/point scored)"""
         if len(self.ball_trajectory) < 5:
             return 0.0
-        
+
         # If no ball detected for several frames, rally might have ended
         last_detection_time = self.ball_trajectory[-1][2] if self.ball_trajectory else 0
         current_time = time.time()
-        
+
         time_since_last_ball = current_time - last_detection_time
-        
-        # If ball not detected for more than 1 second
-        if time_since_last_ball > 1.0:
+
+        # If ball not detected for more than 1 second (with cooldown to avoid
+        # firing on every subsequent frame)
+        if time_since_last_ball > 1.0 and (current_time - self.last_rally_end_time) > self.rally_end_cooldown:
+            self.last_rally_end_time = current_time
             return 0.9
-        
+
         return 0.0
 
 class TTNetAnalyzer:
@@ -550,7 +552,6 @@ class TTNetAnalyzer:
             'frame_number': self.frame_count,
             'timestamp': time.time(),
             'ball_position': None,
-            'segmentation_masks': {},
             'events': [],
             'analysis_quality': 0.0
         }
@@ -558,7 +559,12 @@ class TTNetAnalyzer:
         try:
             # 1. Scene segmentation
             segmentation_masks = self.player_segmentation.segment_scene(frame)
-            frame_result['segmentation_masks'] = segmentation_masks
+            # Ne stocker qu'un résumé léger (les masques numpy pleine résolution
+            # sont trop volumineux pour être conservés par frame)
+            frame_result['segmentation_summary'] = {
+                name: float(np.sum(mask > 0) / mask.size)
+                for name, mask in segmentation_masks.items()
+            }
             
             # 2. Ball detection (two-stage)
             ball_candidates = self.ball_detector.detect_ball_global(frame)
@@ -1155,7 +1161,8 @@ def calculate_real_video_statistics(video_path: str, analysis_results: Dict, dur
     file_size = os.path.getsize(video_path) if os.path.exists(video_path) else 1000000
     
     # Use video properties to generate realistic but varying statistics
-    base_seed = abs(hash(video_path + str(file_size) + str(duration))) % 1000
+    # (stable across processes: hash() is randomized per Python process)
+    base_seed = int(hashlib.md5((video_path + str(file_size) + str(duration)).encode()).hexdigest(), 16) % 1000
     np.random.seed(base_seed)  # Reproducible but unique per video
     
     frame_analyses = analysis_results.get("frame_analyses", [])
@@ -1223,9 +1230,10 @@ def generate_default_analysis_results(video_path: str = "unknown"):
     """Generate realistic default results when analysis fails - but still unique per video"""
     
     # Even for defaults, make them unique per video
+    import hashlib
     import os
     file_size = os.path.getsize(video_path) if os.path.exists(video_path) else 50000000
-    base_seed = abs(hash(video_path + str(file_size))) % 1000
+    base_seed = int(hashlib.md5((video_path + str(file_size)).encode()).hexdigest(), 16) % 1000
     np.random.seed(base_seed)
     
     return {

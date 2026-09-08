@@ -6,6 +6,7 @@ Génération réelle des vidéos compilées avec lexique technique standardisé
 import cv2
 import numpy as np
 import os
+import shutil
 import subprocess
 import tempfile
 import logging
@@ -57,42 +58,7 @@ class VideoSegment:
     metadata: Dict[str, Any]
 
 class TableTennisLexicon:
-    """
-    Lexique technique standardisé du tennis de table
-    Conforme aux règles FFTT 2025 (règlement sportif en vigueur au 1er juillet 2025)
-    """
-    
-    TABLE_SPECS = {
-        'longueur_m': 2.74,       # Règle 2.1.1
-        'largeur_m': 1.525,       # Règle 2.1.1
-        'hauteur_m': 0.76,        # Règle 2.1.1
-        'filet_hauteur_cm': 15.25, # Règle 2.2.2
-        'bande_largeur_cm': 2.0,  # Règle 2.1.4
-        'ligne_centrale_mm': 3.0   # Règle 2.1.6 (doubles)
-    }
-    
-    BALL_SPECS = {
-        'diametre_mm': 40,        # Règle 2.3.1
-        'poids_g': 2.7,           # Règle 2.3.2
-        'materiau': 'plastique',  # Règle 2.3.3
-        'couleurs': ['blanc', 'orange']  # Règle 2.3.3
-    }
-    
-    SERVICE_RULES = {
-        'hauteur_lancer_min_cm': 16,  # Règle 2.6.2 - Minimum 16cm
-        'lancer_vertical': True,       # Règle 2.6.2 - Sans effet
-        'main_ouverte': True,          # Règle 2.6.1 - Paume ouverte
-        'derriere_ligne': True,        # Règle 2.6.4 - Derrière ligne de fond
-        'visible_adversaire': True     # Règle 2.6.4 - Non cachée
-    }
-    
-    SCORING_RULES = {
-        'points_manche': 11,           # Règle 2.11.1
-        'ecart_minimum': 2,            # Règle 2.11.1
-        'alternance_service': 2,       # Règle 2.13.3 - Tous les 2 points
-        'alternance_deuce': 1,         # Règle 2.13.3 - 1 point si 10-10
-        'formats_match': [3, 5, 7]     # Règle 2.12.1 - Nombre impair de manches
-    }
+    """Lexique technique standardisé du tennis de table"""
     
     STROKE_TYPES = {
         'coup_droit': 'Coup droit (CD / Forehand)',
@@ -117,20 +83,18 @@ class TableTennisLexicon:
     SERVICE_TYPES = {
         'service_cd': 'Service coup droit',
         'service_rv': 'Service revers',
-        'service_marteau': 'Service marteau (Tomahawk)',
-        'service_pendulaire': 'Service pendulaire',
+        'service_marteau': 'Service marteau',
         'service_rentrant': 'Service rentrant',
         'service_sortant': 'Service sortant',
         'service_pioche': 'Service pioche',
         'service_coupe': 'Service coupé',
         'service_lifte': 'Service lifté',
         'service_lateral': 'Service latéral',
-        'service_bombe': 'Service bombe (fast long)',
-        'service_court': 'Service court (2ème rebond sur table)',
-        'service_long': 'Service long (vers fond de table)',
-        'service_fantome': 'Service fantôme (sans effet apparent)',
-        'service_gagnant': 'Service gagnant (ace)',
-        'faute_service': 'Faute au service (règle 2.10.1.1)'
+        'service_bombe': 'Service bombe',
+        'service_court': 'Service court',
+        'service_long': 'Service long',
+        'service_gagnant': 'Service gagnant',
+        'faute_service': 'Faute au service'
     }
     
     RETURN_TYPES = {
@@ -147,14 +111,8 @@ class TableTennisLexicon:
     FAULT_TYPES = {
         'faute_directe_cd': 'Faute directe coup droit',
         'faute_directe_rv': 'Faute directe revers',
-        'faute_service': 'Faute au service (règle 2.10.1.1)',
-        'faute_remise': 'Faute en remise (règle 2.10.1.2)',
-        'faute_filet': 'Balle au filet (règle 2.10.1.5)',
-        'faute_dehors': 'Balle dehors (règle 2.10.1.4)',
-        'obstruction': 'Obstruction (règle 2.10.1.6)',
-        'double_frappe': 'Double frappe (règle 2.10.1.7)',
-        'touche_filet': 'Touche filet en jeu (règle 2.10.1.10)',
-        'main_libre_table': 'Main libre sur table (règle 2.10.1.11)',
+        'faute_service': 'Faute au service',
+        'faute_remise': 'Faute en remise',
         'topspin_dehors': 'Topspin dehors',
         'topspin_filet': 'Topspin filet',
         'bloc_dehors': 'Bloc dehors',
@@ -163,20 +121,6 @@ class TableTennisLexicon:
         'poussette_filet': 'Poussette filet',
         'remise_haute': 'Remise trop haute → punie',
         'mauvais_placement': 'Mauvais placement de balle'
-    }
-    
-    LET_SITUATIONS = {
-        'let_service_filet': 'Balle à remettre - Service touche filet (règle 2.9.1.1)',
-        'let_non_pret': 'Balle à remettre - Receveur pas prêt (règle 2.9.1.2)',
-        'let_incident': 'Balle à remettre - Incident externe (règle 2.9.1.3)',
-        'let_arbitre': 'Balle à remettre - Arrêt arbitre (règle 2.9.1.4)'
-    }
-    
-    ACCELERATION_RULE = {
-        'duree_minutes': 10,       # Règle 2.15.1
-        'points_minimum': 18,      # Règle 2.15.2 - Pas d'accélération si >= 18 pts
-        'renvois_max': 13,         # Règle 2.15.4 - 13 renvois = point receveur
-        'service_par_point': 1     # Règle 2.15.4
     }
 
 class VideoProcessor:
@@ -187,8 +131,14 @@ class VideoProcessor:
         self.lexicon = TableTennisLexicon()
         self.executor = ThreadPoolExecutor(max_workers=4)
         
+    def _has_ffmpeg(self) -> bool:
+        return shutil.which("ffmpeg") is not None
+
     def _run_ffmpeg_command(self, command: List[str]) -> bool:
         """Exécuter une commande FFmpeg"""
+        if not self._has_ffmpeg():
+            logger.warning("FFmpeg not found, skipping video compilation step")
+            return False
         try:
             result = subprocess.run(
                 command, 
@@ -204,13 +154,16 @@ class VideoProcessor:
         except subprocess.TimeoutExpired:
             logger.error("FFmpeg command timed out")
             return False
+        except FileNotFoundError:
+            logger.error("FFmpeg binary not found")
+            return False
     
     def detect_rallies(self, video_path: str) -> List[Rally]:
         """Détecter automatiquement les échanges (rallies)"""
         rallies = []
         
         cap = cv2.VideoCapture(video_path)
-        fps = cap.get(cv2.CAP_PROP_FPS)
+        fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         
         # Simulation de détection d'échanges basée sur l'activité
@@ -218,16 +171,24 @@ class VideoProcessor:
         in_rally = False
         rally_count = 0
         
-        frame_idx = 0
+        # Read first frame to initialize previous frame reference
+        ret, prev_frame = cap.read()
+        if not ret:
+            cap.release()
+            return rallies
+        frame_idx = 1
+        processed_idx = 0
+        max_frames = 500  # Limit processing for MVP speed
         activity_history = []
         
-        while frame_idx < total_frames:
+        while frame_idx < total_frames and processed_idx < max_frames:
             ret, frame = cap.read()
             if not ret:
                 break
                 
-            # Détection simplifiée d'activité (changement entre frames)
-            if frame_idx > 0:
+            # Process every 5th frame
+            if frame_idx % 5 == 0:
+                processed_idx += 1
                 diff = cv2.absdiff(frame, prev_frame)
                 activity = np.sum(diff) / (frame.shape[0] * frame.shape[1] * frame.shape[2])
                 activity_history.append(activity)
@@ -262,11 +223,6 @@ class VideoProcessor:
                 
             prev_frame = frame.copy()
             frame_idx += 1
-            
-            # Process every 10th frame for performance
-            if frame_idx % 10 != 0:
-                cap.read()
-                frame_idx += 9
         
         cap.release()
         logger.info(f"Detected {len(rallies)} rallies in video")
@@ -326,7 +282,7 @@ class VideoProcessor:
                 # Ajouter une marge de 1 seconde avant et après chaque échange
                 start = max(0, rally.start_time - 1.0)
                 end = rally.end_time + 2.0
-                f.write(f"file '{video_path}'\n")
+                f.write(f"file '{Path(video_path).as_posix()}'\n")
                 f.write(f"inpoint {start}\n")
                 f.write(f"outpoint {end}\n")
         
@@ -360,20 +316,17 @@ class VideoProcessor:
             for rally in best_rallies:
                 start = max(0, rally.start_time - 0.5)
                 end = rally.end_time + 1.0
-                f.write(f"file '{video_path}'\n")
+                f.write(f"file '{Path(video_path).as_posix()}'\n")
                 f.write(f"inpoint {start}\n")
                 f.write(f"outpoint {end}\n")
         
-        # Ajouter des transitions entre clips
+        # Concaténer les segments (copie de flux, comme les autres compilations)
         command = [
             'ffmpeg', '-y',
             '-f', 'concat',
             '-safe', '0',
             '-i', segments_file,
-            '-filter_complex', 
-            '[0:v]fade=t=in:st=0:d=0.5,fade=t=out:st={duration-0.5}:d=0.5[v]',
-            '-map', '[v]',
-            '-map', '0:a',
+            '-c', 'copy',
             output_path
         ]
         
@@ -403,7 +356,7 @@ class VideoProcessor:
             for rally in service_winners[:6]:  # Maximum 6 services
                 start = max(0, rally.start_time - 1.0)
                 end = rally.end_time + 1.5
-                f.write(f"file '{video_path}'\n")
+                f.write(f"file '{Path(video_path).as_posix()}'\n")
                 f.write(f"inpoint {start}\n")
                 f.write(f"outpoint {end}\n")
         
@@ -445,7 +398,7 @@ class VideoProcessor:
             for rally in fault_samples:
                 start = max(0, rally.start_time - 1.0)
                 end = rally.end_time + 1.0
-                f.write(f"file '{video_path}'\n")
+                f.write(f"file '{Path(video_path).as_posix()}'\n")
                 f.write(f"inpoint {start}\n")
                 f.write(f"outpoint {end}\n")
         
@@ -482,7 +435,7 @@ class VideoProcessor:
             for rally in long_rallies:
                 start = max(0, rally.start_time - 1.0)
                 end = rally.end_time + 1.5
-                f.write(f"file '{video_path}'\n")
+                f.write(f"file '{Path(video_path).as_posix()}'\n")
                 f.write(f"inpoint {start}\n")
                 f.write(f"outpoint {end}\n")
         
@@ -680,15 +633,30 @@ class VideoProcessor:
             'return_points_won': len([r for r in won_rallies if r.strokes and r.strokes[0].player == "opponent"])
         }
     
-    async def process_video_complete(self, video_path: str) -> Dict[str, Any]:
-        """Traitement complet de la vidéo avec génération de toutes les compilations"""
+    async def process_video_complete(self, video_path: str, generate_compilations: bool = True) -> Dict[str, Any]:
+        """Traitement complet de la vidéo avec génération de toutes les compilations.
+
+        generate_compilations=False permet de ne faire que la détection d'échanges
+        et l'analyse technique (utile quand les compilations sont gérées ailleurs,
+        comme dans server.py).
+        """
         logger.info(f"Starting complete video processing: {video_path}")
-        
+
         # 1. Détecter les échanges
         rallies = await asyncio.get_event_loop().run_in_executor(
             self.executor, self.detect_rallies, video_path
         )
-        
+
+        if not generate_compilations:
+            technical_analysis = await asyncio.get_event_loop().run_in_executor(
+                self.executor, self.generate_technical_analysis, rallies
+            )
+            return {
+                'rallies': rallies,
+                'compilations': None,
+                'technical_analysis': technical_analysis
+            }
+
         # 2. Générer toutes les compilations en parallèle
         compilation_tasks = [
             asyncio.get_event_loop().run_in_executor(

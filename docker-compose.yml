@@ -1,51 +1,30 @@
-version: '3.8'
+version: "3.8"
 
 services:
-  anythingllm:
-    image: mintplexlabs/anythingllm:latest
-    container_name: pingpro-anythingllm
+  backend:
+    build: ./backend
+    container_name: pingpro-backend
     ports:
-      - "3001:3001"
+      - "8000:8000"
     volumes:
-      - anythingllm_data:/app/server/storage
-      - anythingllm_models:/app/server/storage/models
+      - uploads:/app/uploads
+      - compilations:/app/compilations
     environment:
-      - STORAGE_DIR=/app/server/storage
-      - SERVER_PORT=3001
-      # Désactiver l'authentification
-      - DISABLE_AUTH=true              # ✅ Changer à true
-      # NE PAS définir AUTH_TOKEN quand DISABLE_AUTH=true
-      - LLM_PROVIDER=anythingllm
-      - DISABLE_TELEMETRY=true
-      - ENABLE_LOCAL_MODELS=true
-      # ❌ Désactiver Ollama / LocalAI
-      - OLLAMA_BASE_URL=
-      - LOCAL_AI_BASE_URL=
-      - LOCAL_AI_ENABLED=false
-      # Optionnel mais propre
-      - DISABLE_TELEMETRY=true
+      - CORS_ORIGINS=*
     restart: unless-stopped
-    networks:
-      - pingpro_network
 
-  mongodb:
-    image: mongo:latest
-    container_name: pingpro-mongodb
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        REACT_APP_BACKEND_URL: http://localhost:8000
+    container_name: pingpro-frontend
     ports:
-      - "27017:27017"
-    volumes:
-      - mongodb_data:/data/db
-    environment:
-      - MONGO_INITDB_DATABASE=pingpro
+      - "3000:80"
+    depends_on:
+      - backend
     restart: unless-stopped
-    networks:
-      - pingpro_network
 
 volumes:
-  anythingllm_data:
-  anythingllm_models:
-  mongodb_data:
-
-networks:
-  pingpro_network:
-    driver: bridge
+  uploads:
+  compilations:
