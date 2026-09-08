@@ -53,23 +53,24 @@ const LANDMARK_INDICES = {
 };
 
 function Skeleton3D({ landmarks, color = '#00ff88' }) {
-  if (!landmarks || landmarks.length === 0) return null;
-
   const points = useMemo(() => {
-    return landmarks.map((lm) => new THREE.Vector3(lm.x * 2 - 1, -(lm.y * 2 - 1), lm.z || 0));
+    return (landmarks || []).map((lm) => new THREE.Vector3(lm.x * 2 - 1, -(lm.y * 2 - 1), lm.z || 0));
   }, [landmarks]);
 
-  const lines = useMemo(() => {
-    const pts = [];
+  const linePositions = useMemo(() => {
+    const coords = [];
     SKELETON_CONNECTIONS.forEach(([a, b]) => {
       const ia = LANDMARK_INDICES[a];
       const ib = LANDMARK_INDICES[b];
       if (ia < points.length && ib < points.length) {
-        pts.push(points[ia], points[ib]);
+        coords.push(points[ia].x, points[ia].y, points[ia].z);
+        coords.push(points[ib].x, points[ib].y, points[ib].z);
       }
     });
-    return pts;
+    return new Float32Array(coords);
   }, [points]);
+
+  if (points.length === 0) return null;
 
   return (
     <group>
@@ -79,14 +80,12 @@ function Skeleton3D({ landmarks, color = '#00ff88' }) {
           <meshStandardMaterial color={color} />
         </mesh>
       ))}
-      {lines.length > 0 && (
+      {linePositions.length > 0 && (
         <lineSegments>
           <bufferGeometry>
             <bufferAttribute
               attach="attributes-position"
-              count={lines.length}
-              array={new Float32Array(lines.flatMap((p) => [p.x, p.y, p.z]))}
-              itemSize={3}
+              args={[linePositions, 3]}
             />
           </bufferGeometry>
           <lineBasicMaterial color={color} linewidth={2} />
@@ -122,11 +121,6 @@ export default function PoseAnalysis({ results }) {
 
   return (
     <div className="space-y-6">
-      {results?.isMock && (
-        <div className="flex justify-end">
-          <Badge className="bg-purple-100 text-purple-800 border-purple-200">Mode démo</Badge>
-        </div>
-      )}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-6">
