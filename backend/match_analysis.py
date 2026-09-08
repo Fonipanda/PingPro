@@ -236,7 +236,42 @@ def detect_bounces(
             c["stroke_side"] = _classify_stroke_side(
                 c["speed_ms"], c["table_y"], median_speed, left_handed
             )
+            # Camp du rebond : table_x < 0 = moitié image-gauche (convention homographie)
+            c["side"] = "gauche" if c["table_x"] < 0 else "droite"
     return candidates
+
+
+def attribute_rallies(
+    rallies: List[Dict[str, Any]], bounces: List[Dict[str, Any]]
+) -> List[Dict[str, Any]]:
+    """
+    Estime le gagnant de chaque échange : le dernier rebond détecté a atterri
+    côté X, le camp adverse marque (l'échange s'arrête quand le retour échoue).
+    winner_side = None si aucun rebond fiable dans l'échange.
+    """
+    events = []
+    for rally in rallies:
+        rb = [
+            b for b in bounces
+            if rally["start_time"] - 0.2 <= b["timestamp"] <= rally["end_time"] + 0.5
+        ]
+        winner_side = None
+        last_side = None
+        if rb:
+            last = max(rb, key=lambda b: b["timestamp"])
+            last_side = last["side"]
+            winner_side = "droite" if last_side == "gauche" else "gauche"
+        events.append(
+            {
+                "start_time": rally["start_time"],
+                "end_time": rally["end_time"],
+                "last_bounce_side": last_side,
+                "winner_side": winner_side,
+                "confident": winner_side is not None,
+                "stroke_count": rally.get("stroke_count", 0),
+            }
+        )
+    return events
 
 
 def build_match_analysis(
@@ -245,10 +280,12 @@ def build_match_analysis(
     table_info: Optional[Dict[str, Any]] = None,
     fallback_scale_m_per_px: Optional[float] = None,
     player_side: Optional[str] = None,
+    manual_quad: Optional[np.ndarray] = None,
 ) -> Dict[str, Any]:
     """
     Construit le bloc "Analyse de match" à partir des frame_analyses TTNet.
-    Détecte la table à la demande si table_info n'est pas fourni.
+    Détecte la table à la demande si table_info n'est pas fourni ; un quad de
+    calibrage manuel (4 coins image) prime sur l'auto-détection.
     """
     frame_analyses = ttnet_results.get("frame_analyses", [])
     ball_points = _extract_ball_points(frame_analyses)
@@ -256,7 +293,7 @@ def build_match_analysis(
     if table_info is None:
         try:
             detector = TableDetector()
-            table_info = detector.detect_table_homography(video_path)
+            table_info = detector.detect_table_homography(video_path, manual_quad=manual_quad)
         except Exception as e:
             logger.warning(f"Détection de table échouée (non bloquant): {e}")
             table_info = None
@@ -279,9 +316,26 @@ def build_match_analysis(
         "longs_8_plus": len([r for r in rallies if r["stroke_count"] > 7]),
     }
 
+    scoring_events = attribute_rallies(rallies, bounces) if (rallies and bounces) else []
+
+    # Stats par camp : rebonds sur chaque moitié + vitesse moyenne par camp
+    player_stats: Dict[str, Any] = {}
+    if bounces:
+        for side in ("gauche", "droite"):
+            side_bounces = [b for b in bounces if b.get("side") == side]
+            side_speeds = [b["speed_ms"] for b in side_bounces if b.get("speed_ms")]
+            player_stats[side] = {
+                "bounces": len(side_bounces),
+                "avg_speed_ms": round(float(np.mean(side_speeds)), 1) if side_speeds else None,
+            }
+
     return {
         "available": bool(rallies),
         "table_detected": table_info is not None,
+        "table_source": (table_info or {}).get("source", "auto" if table_info else None),
+        "table_quad_pixel": (
+            [[float(x), float(y)] for x, y in table_info["quad"]] if table_info else None
+        ),
         "total_ball_detections": len(ball_points),
         "rallies": rallies,
         "rally_summary": {
@@ -296,6 +350,8 @@ def build_match_analysis(
         "placement": placement,
         "ball_speed": speeds,
         "bounces": bounces[:100],
+        "scoring_events": scoring_events,
+        "player_stats": player_stats,
         "key_moments": {
             "longest_rally": longest,
             "fastest_frame_speed_ms": speeds.get("max_speed_ms"),

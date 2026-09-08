@@ -1,31 +1,47 @@
-# Modèle de détection de balle
+# Modèles ONNX de PingPro (moteur v3)
 
-Placez ici un modèle YOLO fine-tuné sur des balles de tennis de table, exporté
-au format ONNX sous le nom **`ball_yolo.onnx`** (entrée image 1x3xHxW, sortie
-YOLOv8/11 standard `(1, 4+nc, N)`).
+Deux modèles optionnels, avec repli propre si absents :
 
-Sans ce fichier, PingPro utilise automatiquement l'heuristique de détection
-existante (`ttnet_analysis.BallDetector`) : aucune fonctionnalité n'est perdue.
+| Fichier | Rôle | Repli si absent |
+|---|---|---|
+| `ball_yolo.onnx` | Détection de balle (YOLO fine-tuné "table tennis ball") | Heuristique couleur/forme (`ttnet_analysis.BallDetector`) |
+| `yolov8n.onnx` | Détection des **joueurs** (COCO, classe `person`) pour le suivi gauche/droite | Suivi joueurs indisponible (stats adverses non calculées) |
 
-## Générer le modèle (optionnel, nécessite un GPU pour l'entraînement)
+Les fichiers sont **hors git** (dépôt léger) — régénération documentée ci-dessous.
+
+## 1. Balle fine-tunée (`ball_yolo.onnx`)
+
+```bash
+# a) Télécharger un dataset (compte Roboflow gratuit, clé API)
+set ROBOFLOW_API_KEY=xxxxxxxx
+pip install roboflow
+python ../tools/export_ball_model.py --download-roboflow "madianou-kqrfk/table-tennis-ball-detection" --version 1
+
+# b) Entraîner — recommandé : Google Colab (GPU gratuit)
+#    Ouvrez ../tools/colab_train_ball.ipynb sur colab.research.google.com,
+#    exécutez-le, récupérez best.pt, puis ici :
+python ../tools/export_ball_model.py --weights best.pt
+
+#    Entraînement local possible mais long sur CPU :
+python ../tools/export_ball_model.py --dataset ../datasets/ball/data.yaml --epochs 40
+```
+
+Benchmark avant/après sur une vraie vidéo :
+
+```bash
+python ../tools/bench_ball_detection.py <chemin/vers/video.mp4>
+```
+
+## 2. Joueurs (`yolov8n.onnx`)
+
+Export simple du YOLO de base (classe `person` du COCO, pas d'entraînement requis) :
 
 ```bash
 pip install ultralytics
-python ../tools/export_ball_model.py --dataset <chemin/vers/dataset-yolo>
+python ../tools/export_ball_model.py --base yolov8n.pt --out yolov8n.onnx
 ```
 
-Sources de datasets publics : recherchez "table tennis ball" sur Roboflow Universe
-(export format YOLO). Un fine-tuning court de `yolov8n` / `yolo11n` (20-50 epochs)
-suffit généralement pour la balle.
+## Note ONNX Runtime
 
-## Export sans ré-entraînement (test rapide)
-
-```bash
-pip install ultralytics
-yolo export model=yolov8n.pt format=onnx
-```
-
-Puis copiez `yolov8n.onnx` ici sous le nom `ball_yolo.onnx`. Sans fine-tuning,
-la classe détectée est COCO "sports ball" : le détecteur n'applique aucun filtre
-de classe, donc cela fonctionne, avec une précision moindre que sur un modèle
-spécialisé.
+`onnxruntime` (CPU) est installé par défaut. Sur un iGPU AMD, décommentez
+`onnxruntime-directml` dans `backend/requirements.txt` pour l'accélération DirectML.

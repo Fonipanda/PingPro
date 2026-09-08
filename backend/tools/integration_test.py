@@ -48,7 +48,12 @@ def main():
         r = client.post(
             "/api/analyze",
             files={"video": ("test.mp4", f, "video/mp4")},
-            data={"player_side": "droite", "skill_level": "intermediaire"},
+            data={
+                "player_side": "droite",
+                "skill_level": "intermediaire",
+                # calibrage manuel : 4 coins normalisés couvrant la table synthétique
+                "table_quad": "[[0.2,0.8],[0.8,0.8],[0.9,0.3],[0.1,0.3]]",
+            },
         )
     assert r.status_code == 200, r.text
     analysis_id = r.json()["analysis_id"]
@@ -65,11 +70,19 @@ def main():
     res = client.get(f"/api/analysis/{analysis_id}/results").json()
     ma = res.get("match_analysis")
     assert ma, "match_analysis absent"
-    print("table_detected:", ma["table_detected"])
+    print("table_detected:", ma["table_detected"], "| source:", ma.get("table_source"))
+    # Calibrage manuel fourni : l'homographie doit venir du calibrage (garantie)
+    assert ma.get("table_source") == "manual", (
+        f"calibrage manuel attendu, obtenu: {ma.get('table_source')}"
+    )
+    assert ma.get("table_quad_pixel"), "quad pixel absent"
+    print("scoring_events:", len(ma.get("scoring_events") or []))
+    print("player_stats:", ma.get("player_stats"))
     print("rallies:", ma["rally_summary"]["total_rallies"], "| speed:", ma["ball_speed"].get("max_speed_ms"), "m/s")
     print("compilations:", sorted((res.get("video_compilations") or {}).keys()))
     print("training_plan source:", res.get("training_plan", {}).get("source"))
     print("pose_report présent:", bool(res.get("pose_report")))
+    print("players_analysis disponible:", bool(res.get("players_analysis")))
     assert res.get("training_plan"), "training_plan absent"
 
     # FFmpeg présent : le montage auto et l'overlay de placement doivent être générés
@@ -86,12 +99,11 @@ def main():
     # Score : cohérence progression / échanges détectés
     scoring = res.get("table_tennis_scoring") or {}
     assert scoring.get("estimated") is True, "score doit être badgé estimation"
-    detected = ma["rally_summary"]["total_rallies"]
+    assert scoring.get("user_side") == "droite"
     total_points = (scoring.get("match_statistics") or {}).get("total_points")
-    if detected > 0:
-        assert total_points == min(25, max(1, detected)), (
-            f"total_points ({total_points}) != échanges détectés ({detected})"
-        )
+    assert total_points == len(scoring.get("score_progression") or []), "progression incohérente"
+    if scoring.get("attribution_quality") == "par_échange":
+        assert scoring["points_attributed"] <= scoring["points_total_detected"]
     print("score estimé:", (scoring.get("final_score") or {}), "| total points:", total_points)
 
     # Endpoint /api/plan

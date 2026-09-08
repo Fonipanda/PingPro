@@ -8,6 +8,7 @@ provide the analysis. Video compilations are generated when FFmpeg is available.
 import asyncio
 import logging
 import os
+import json
 import shutil
 import subprocess
 import uuid
@@ -37,6 +38,7 @@ from pose_analysis import analyze_video_pose
 from pose_reference import compare_with_reference, suggest_improvements
 from table_detector import TableDetector
 from match_analysis import build_match_analysis, extract_video_fallback_scale
+from players_tracker import analyze_players
 from video_overlay import (
     get_ffmpeg_path,
     build_auto_edit,
@@ -73,6 +75,9 @@ class AnalysisRequest(BaseModel):
     player_side: str = "droite"
     skill_level: str = "intermediaire"
     focus_areas: List[str] = ["technique_coups", "positionnement", "timing"]
+    # Calibrage manuel de la table : 4 coins [[x, y], ...] en coordonnées
+    # normalisées (0-1) de la frame. Optionnel — l'auto-détection reste le défaut.
+    table_quad: Optional[List[List[float]]] = None
 
 
 class AnalysisStatus(BaseModel):
@@ -130,6 +135,7 @@ class AnalysisResult(BaseModel):
     pose_report: Optional[str] = None
     overlay_frames: Optional[List[str]] = None
     match_analysis: Optional[Dict[str, Any]] = None
+    players_analysis: Optional[Dict[str, Any]] = None
     training_plan: Optional[Dict[str, Any]] = None
 
 
@@ -399,13 +405,17 @@ def _compile_videos(
 
 
 def _apply_table_tennis_scoring(
-    ttnet_results: Dict[str, Any], match_analysis: Optional[Dict[str, Any]] = None
+    ttnet_results: Dict[str, Any],
+    match_analysis: Optional[Dict[str, Any]] = None,
+    player_side: str = "droite",
 ) -> Dict[str, Any]:
     """
-    Score ESTIMÉ, clairement non fiable : la vidéo ne permet pas de savoir qui
-    marque chaque point sans identification des joueurs. Le nombre total de
-    points s'appuie sur les échanges réellement détectés (1 échange ≈ 1 point),
-    borné à un set raisonnable.
+    Score reconstruit à partir des échanges détectés.
+    - Si les gagnants d'échange sont attribués (rebond final détecté par camp),
+      la progression est réelle point par point (toujours marquée "estimation"
+      car la détection reste imparfaite).
+    - Sinon, repli : total de points = nombre d'échanges détectés, réparti par
+      taux de détection (estimation grossière, clairement badgée).
     """
     stats = ttnet_results.get("match_statistics", {})
     events = stats.get("event_summary", {})
@@ -415,37 +425,52 @@ def _apply_table_tennis_scoring(
 
     rally_summary = (match_analysis or {}).get("rally_summary") or {}
     detected_rallies = int(rally_summary.get("total_rallies", 0))
+    scoring_events = (match_analysis or {}).get("scoring_events") or []
+    user_side = "droite" if player_side == "droite" else "gauche"
 
-    if detected_rallies > 0:
-        total_points = min(25, max(1, detected_rallies))
-    else:
-        total_points = min(25, max(11, total_bounces // 2))
-
-    player1 = int(round(total_points * detection_rate))
-    player2 = total_points - player1
-
-    # Progression : cumul cohérent avec le score estimé final
     progression = []
-    for i in range(1, total_points + 1):
-        ratio = i / float(total_points)
-        progression.append(
-            {
-                "point": i,
-                "player1": int(round(player1 * ratio)),
-                "player2": int(round(player2 * ratio)),
-            }
-        )
+    p1 = p2 = 0
+    attributed = 0
+    if scoring_events:
+        for i, ev in enumerate(scoring_events):
+            if ev.get("winner_side") == user_side:
+                p1 += 1
+                attributed += 1
+            elif ev.get("winner_side"):
+                p2 += 1
+                attributed += 1
+            progression.append({"point": i + 1, "player1": p1, "player2": p2})
+    else:
+        if detected_rallies > 0:
+            total_points = min(25, max(1, detected_rallies))
+        else:
+            total_points = min(25, max(11, total_bounces // 2))
+        p1 = int(round(total_points * detection_rate))
+        p2 = total_points - p1
+        for i in range(1, total_points + 1):
+            ratio = i / float(total_points)
+            progression.append(
+                {
+                    "point": i,
+                    "player1": int(round(p1 * ratio)),
+                    "player2": int(round(p2 * ratio)),
+                }
+            )
 
     return {
         "estimated": True,
+        "user_side": user_side,
+        "attribution_quality": "par_échange" if scoring_events else "grossière",
+        "points_attributed": attributed,
+        "points_total_detected": len(scoring_events) if scoring_events else 0,
         "final_score": {
-            "player1": player1,
-            "player2": player2,
-            "winner": "player1" if player1 > player2 else "player2",
+            "player1": p1,
+            "player2": p2,
+            "winner": "player1" if p1 > p2 else "player2",
         },
         "sets": {
-            "player1_sets": 1 if player1 > player2 else 0,
-            "player2_sets": 1 if player2 > player1 else 0,
+            "player1_sets": 1 if p1 > p2 else 0,
+            "player2_sets": 1 if p2 > p1 else 0,
             "total_sets": 1,
             "match_format": "Best of 3",
         },
@@ -457,7 +482,7 @@ def _apply_table_tennis_scoring(
             "match_format": "First to 2 sets (best of 3)",
         },
         "match_statistics": {
-            "total_points": total_points,
+            "total_points": len(progression),
             "detected_rallies": detected_rallies,
             "longest_rally": rally_summary.get("average_strokes")
             and int(round(float(rally_summary.get("average_strokes"))))
@@ -931,13 +956,59 @@ async def _process_video_analysis(analysis_id: str, video_path: str, params: Ana
         analysis_status[analysis_id].current_step = "Traitement vidéo et détection des échanges..."
 
         # 1bis. Analyse de match (table + homographie + placement/vitesses/échanges)
+        # Calibrage manuel optionnel : quad fourni en coordonnées normalisées (0-1)
+        manual_quad = None
+        if params.table_quad and len(params.table_quad) == 4:
+            try:
+                import cv2 as _cv2
+
+                _cap = _cv2.VideoCapture(video_path)
+                _w = int(_cap.get(_cv2.CAP_PROP_FRAME_WIDTH))
+                _h = int(_cap.get(_cv2.CAP_PROP_FRAME_HEIGHT))
+                _cap.release()
+                manual_quad = np.array(
+                    [
+                        [float(p[0]) * _w, float(p[1]) * _h]
+                        for p in params.table_quad
+                    ],
+                    dtype=np.float32,
+                )
+            except Exception as e:
+                logger.warning(f"Quad de calibrage ignoré : {e}")
+                manual_quad = None
+
         try:
             match_analysis = await asyncio.get_event_loop().run_in_executor(
-                None, build_match_analysis, ttnet_results, video_path, None, None, params.player_side
+                None,
+                build_match_analysis,
+                ttnet_results,
+                video_path,
+                None,
+                None,
+                params.player_side,
+                manual_quad,
             )
         except Exception as e:
             logger.warning(f"Match analysis failed (non-blocking): {e}")
             match_analysis = None
+
+        # 1ter. Suivi des joueurs (gauche/droite) — non bloquant
+        players_results: Dict[str, Any] = {"available": False}
+        try:
+            players_results = await asyncio.get_event_loop().run_in_executor(
+                None,
+                analyze_players,
+                video_path,
+                (match_analysis or {}).get("table_quad_pixel"),
+                4,
+            )
+        except Exception as e:
+            logger.warning(f"Players tracking failed (non-blocking): {e}")
+        # Allègement : ne garder qu'un échantillon de frames pour le résultat JSON
+        if players_results.get("available"):
+            sampled = (players_results.get("frames") or [])[::10]
+            players_results["frames"] = sampled
+            players_results["summary"]["frames_returned"] = len(sampled)
 
         # 2. Video processor (rallies + technical analysis)
         # Non bloquant : les compilations servies sont générées séparément
@@ -1117,11 +1188,14 @@ async def _process_video_analysis(analysis_id: str, video_path: str, params: Ana
             confidence_score=ttnet_results.get("match_statistics", {}).get("ball_detection_rate", 0),
             video_compilations=video_compilations,
             lexicon_analysis=video_processing_results.get("technical_analysis", {}),
-            table_tennis_scoring=_apply_table_tennis_scoring(ttnet_results, match_analysis),
+            table_tennis_scoring=_apply_table_tennis_scoring(
+                ttnet_results, match_analysis, params.player_side
+            ),
             pose_reference_comparison=pose_comparison,
             pose_report=pose_report,
             overlay_frames=pose_results.get("overlay_frames") if "error" not in pose_results else None,
             match_analysis=match_analysis,
+            players_analysis=players_results if players_results.get("available") else None,
             training_plan=training_plan,
         )
 
@@ -1157,6 +1231,7 @@ async def upload_and_analyze_video(
     player_side: str = Form("droite"),
     skill_level: str = Form("intermediaire"),
     focus_areas: str = Form("technique_coups,positionnement,timing"),
+    table_quad: str = Form(""),
 ):
     if not video.filename or not video.filename.lower().endswith((".mp4", ".avi", ".mov", ".mkv")):
         raise HTTPException(
@@ -1173,10 +1248,25 @@ async def upload_and_analyze_video(
         while chunk := await video.read(1024 * 1024):
             await f.write(chunk)
 
+    # Calibrage manuel optionnel : JSON "[[x,y],[x,y],[x,y],[x,y]]" normalisé (0-1)
+    parsed_quad = None
+    if table_quad:
+        try:
+            _quad = json.loads(table_quad)
+            if (
+                isinstance(_quad, list)
+                and len(_quad) == 4
+                and all(isinstance(p, (list, tuple)) and len(p) == 2 for p in _quad)
+            ):
+                parsed_quad = [[float(p[0]), float(p[1])] for p in _quad]
+        except Exception:
+            parsed_quad = None
+
     params = AnalysisRequest(
         player_side=player_side,
         skill_level=skill_level,
         focus_areas=[a.strip() for a in focus_areas.split(",")],
+        table_quad=parsed_quad,
     )
 
     analysis_status[analysis_id] = AnalysisStatus(

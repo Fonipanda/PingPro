@@ -122,12 +122,143 @@ const StatTile = ({ value, label, colorClass = 'text-emerald-600', bgClass = 'bg
 );
 
 // HomePage Component
+// TableCalibratorModal — calibrage manuel de la table (4 coins cliqués sur une frame)
+// Garantit l'homographie quand l'auto-détection échoue (plan de caméra difficile).
+const CORNER_LABELS = [
+  'Coin gauche proche (votre côté, à gauche)',
+  'Coin droit proche (votre côté, à droite)',
+  'Coin droit éloigné',
+  'Coin gauche éloigné',
+];
+
+const TableCalibratorModal = ({ file, onValidate, onClose }) => {
+  const [points, setPoints] = useState([]);
+  const [seeked, setSeeked] = useState(false);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+
+  const drawCanvas = () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas || !video.videoWidth) return;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+    points.forEach((p, i) => {
+      if (i > 0) {
+        const prev = points[i - 1];
+        ctx.beginPath();
+        ctx.moveTo(prev[0] * canvas.width, prev[1] * canvas.height);
+        ctx.lineTo(p[0] * canvas.width, p[1] * canvas.height);
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.arc(p[0] * canvas.width, p[1] * canvas.height, 8, 0, 2 * Math.PI);
+      ctx.fillStyle = i === points.length - 1 ? '#ef4444' : '#10b981';
+      ctx.fill();
+    });
+  };
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return undefined;
+    const onSeek = () => {
+      setSeeked(true);
+      drawCanvas();
+    };
+    video.addEventListener('seeked', onSeek);
+    video.addEventListener('loadeddata', onSeek);
+    return () => {
+      video.removeEventListener('seeked', onSeek);
+      video.removeEventListener('loadeddata', onSeek);
+    };
+  });
+
+  const handleClick = (e) => {
+    if (points.length >= 4) return;
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+    const next = [...points, [Math.min(1, Math.max(0, x)), Math.min(1, Math.max(0, y))]];
+    setPoints(next);
+    setTimeout(drawCanvas, 0);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl p-6 max-w-3xl w-full max-h-full overflow-auto">
+        <h3 className="text-lg font-semibold mb-1">Calibrage de la table</h3>
+        <p className="text-sm text-gray-600 mb-4">
+          Cliquez les <strong>4 coins de la surface de jeu</strong> dans l'ordre indiqué
+          ({points.length}/4). Le calibrage garantit la carte de placement et l'incrustation
+          vidéo, même quand la détection automatique échoue.
+        </p>
+        <video
+          ref={videoRef}
+          src={URL.createObjectURL(file)}
+          muted
+          className="hidden"
+          onLoadedMetadata={(e) => {
+            e.target.currentTime = Math.min(2, (e.target.duration || 4) / 2);
+          }}
+        />
+        <canvas
+          ref={canvasRef}
+          onClick={handleClick}
+          className="w-full rounded-lg border border-gray-300 cursor-crosshair"
+          style={{ display: seeked ? 'block' : 'none' }}
+        />
+        {!seeked && (
+          <p className="text-sm text-gray-400 py-10 text-center">Chargement de la frame...</p>
+        )}
+        <ol className="text-xs text-gray-500 mt-3 space-y-1">
+          {CORNER_LABELS.map((label, i) => (
+            <li key={i} className={points.length === i ? 'font-semibold text-emerald-600' : ''}>
+              {i + 1}. {label}
+            </li>
+          ))}
+        </ol>
+        <div className="flex justify-end space-x-3 mt-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-50"
+          >
+            Annuler
+          </button>
+          <button
+            type="button"
+            onClick={() => setPoints([])}
+            className="px-4 py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-50"
+          >
+            Recommencer
+          </button>
+          <button
+            type="button"
+            disabled={points.length !== 4}
+            onClick={() => onValidate(points)}
+            className="px-4 py-2 text-sm rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-40"
+          >
+            Valider le calibrage
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const HomePage = ({ onAnalysisStarted }) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [dragActive, setDragActive] = useState(false);
   const [playerSide, setPlayerSide] = useState('droite');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
+  const [tableQuad, setTableQuad] = useState(null);
+  const [showCalibrator, setShowCalibrator] = useState(false);
 
   const handleDrag = (e) => {
     e.preventDefault();
@@ -155,6 +286,7 @@ const HomePage = ({ onAnalysisStarted }) => {
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       setSelectedFile(e.target.files[0]);
+      setTableQuad(null);
     }
   };
 
@@ -170,6 +302,9 @@ const HomePage = ({ onAnalysisStarted }) => {
       formData.append('player_side', playerSide);
       formData.append('skill_level', 'intermediaire');
       formData.append('focus_areas', 'technique_coups,positionnement,timing');
+      if (tableQuad && tableQuad.length === 4) {
+        formData.append('table_quad', JSON.stringify(tableQuad));
+      }
 
       const data = await analyzeVideo(formData);
       if (data?.analysis_id) {
@@ -282,6 +417,27 @@ const HomePage = ({ onAnalysisStarted }) => {
                 </div>
               </div>
 
+              {/* Calibrage de table (optionnel mais recommandé) */}
+              {selectedFile && (
+                <div className="max-w-md mx-auto flex items-center justify-between bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">Calibrage de la table</p>
+                    <p className="text-xs text-gray-500">
+                      {tableQuad
+                        ? 'Calibré : placement et incrustation garantis.'
+                        : 'Recommandé si la table est mal détectée automatiquement.'}
+                    </p>
+                  </div>
+                  <Button
+                    variant={tableQuad ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setShowCalibrator(true)}
+                  >
+                    {tableQuad ? 'Modifier' : 'Calibrer'}
+                  </Button>
+                </div>
+              )}
+
               {uploadError && (
                 <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-center">
                   {uploadError}
@@ -365,6 +521,17 @@ const HomePage = ({ onAnalysisStarted }) => {
           </Card>
         </div>
       </section>
+
+      {showCalibrator && selectedFile && (
+        <TableCalibratorModal
+          file={selectedFile}
+          onValidate={(pts) => {
+            setTableQuad(pts);
+            setShowCalibrator(false);
+          }}
+          onClose={() => setShowCalibrator(false)}
+        />
+      )}
 
       {/* Footer */}
       <footer className="bg-gray-50 py-12 px-6 mt-20">
@@ -861,10 +1028,22 @@ const ResultsPage = ({ results, onReset }) => {
               </CardHeader>
               <CardContent>
                 <p className="text-xs text-gray-500 mb-4">
-                  La vidéo ne permet pas de savoir qui marque chaque point (les joueurs ne sont pas
-                  identifiés) : ce score est une <strong>estimation</strong> basée sur les{' '}
-                  {num(matchStats.detected_rallies, num(rally.total_serves, 0))} échanges réellement
-                  détectés, répartis selon la qualité de détection.
+                  {scoring.attribution_quality === 'par_échange' ? (
+                    <>
+                      Score <strong>reconstruit échange par échange</strong> à partir du dernier
+                      rebond détecté de chaque échange ({' '}
+                      {num(scoring.points_attributed, 0)}/{num(scoring.points_total_detected, 0)}{' '}
+                      points attribués). Restez prudent : la détection reste imparfaite.
+                    </>
+                  ) : (
+                    <>
+                      La vidéo ne permet pas de savoir qui marque chaque point (les joueurs ne sont
+                      pas identifiés) : ce score est une <strong>estimation</strong> basée sur les{' '}
+                      {num(matchStats.detected_rallies, num(rally.total_serves, 0))} échanges
+                      réellement détectés, répartis selon la qualité de détection. Utilisez le
+                      calibrage de table à l'upload pour une attribution par échange.
+                    </>
+                  )}
                 </p>
                 <div className="h-64 mb-6">
                   <ResponsiveContainer width="100%" height="100%">
@@ -1562,6 +1741,58 @@ const ResultsPage = ({ results, onReset }) => {
 
             {matchAnalysis ? (
               <>
+                {(matchAnalysis.player_stats && Object.keys(matchAnalysis.player_stats).length > 0) && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center space-x-2">
+                        <Activity className="w-5 h-5 text-emerald-500" />
+                        <span>Rebonds par camp (gauche / droite de l'image)</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        {['gauche', 'droite'].map((side) => {
+                          const s = matchAnalysis.player_stats[side] || {};
+                          const isUser = (scoring.user_side || 'droite') === side;
+                          return (
+                            <div
+                              key={side}
+                              className={`p-4 rounded-lg border ${isUser ? 'border-emerald-300 bg-emerald-50' : 'border-gray-200 bg-gray-50'}`}
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-semibold text-gray-800">
+                                  Camp {side} {isUser ? '(vous)' : '(adversaire)'}
+                                </span>
+                                {results.players_analysis?.summary && (
+                                  <Badge variant="secondary">
+                                    {side === 'gauche'
+                                      ? pct(num(results.players_analysis.summary.left_detection_ratio, 0) * 100)
+                                      : pct(num(results.players_analysis.summary.right_detection_ratio, 0) * 100)}{' '}
+                                    présence
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <StatTile value={num(s.bounces, 0)} label="Rebonds subis" />
+                                <StatTile
+                                  value={s.avg_speed_ms != null ? `${s.avg_speed_ms} m/s` : 'N/A'}
+                                  label="Vitesse moy. des balles reçues"
+                                  colorClass="text-purple-600"
+                                  bgClass="bg-white"
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <p className="text-xs text-gray-400 mt-3">
+                        « Votre côté » est déduit du choix fait à l'upload. La présence (%) vient du
+                        suivi de joueurs YOLO — sans modèle, les camps restent estimés par la table
+                        seule.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
                 <div className="grid md:grid-cols-4 gap-4">
                   <StatTile
                     value={num(matchAnalysis.rally_summary?.total_rallies, 0)}

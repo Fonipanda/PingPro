@@ -55,7 +55,13 @@ class TableDetector:
         self._cached_quad: Optional[np.ndarray] = None
 
     def _table_mask(self, frame: np.ndarray) -> np.ndarray:
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        # CLAHE sur la luminance : renforce les lignes/contrastes en basse lumière
+        lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        lab[:, :, 0] = clahe.apply(lab[:, :, 0])
+        enhanced = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+
+        hsv = cv2.cvtColor(enhanced, cv2.COLOR_BGR2HSV)
         masks = []
         # Bleu (table courante) : hue ~ 95-125
         masks.append(cv2.inRange(hsv, np.array([95, 60, 40]), np.array([125, 255, 255])))
@@ -85,15 +91,53 @@ class TableDetector:
             quad = approx.reshape(4, 2).astype(np.float32)
         else:
             quad = cv2.boxPoints(cv2.minAreaRect(largest)).astype(np.float32)
-        return _order_corners(quad)
+        quad = _order_corners(quad)
+        if not self._quad_plausible(quad):
+            return None
+        return quad
+
+    def _quad_plausible(self, quad: np.ndarray) -> bool:
+        """Ratio long/short côté proche du ratio réel d'une table (2,74/1,525 ≈ 1,8)."""
+        e1 = float(np.linalg.norm(quad[1] - quad[0]))
+        e2 = float(np.linalg.norm(quad[2] - quad[1]))
+        short = max(1.0, min(e1, e2))
+        ratio = max(e1, e2) / short
+        return 1.15 <= ratio <= 2.8
+
+    def homography_from_manual_quad(self, manual_quad: np.ndarray) -> Dict[str, np.ndarray]:
+        """
+        Homographie garantie à partir d'un quad fourni (calibrage manuel : les
+        4 coins de la surface de jeu cliqués par l'utilisateur).
+        """
+        quad = _order_corners(np.asarray(manual_quad, dtype=np.float32).reshape(4, 2))
+        H, _ = cv2.findHomography(quad, TARGET_CORNERS)
+        if H is None or not np.isfinite(H).all() or abs(float(H[2, 2])) < 1e-9:
+            raise ValueError("Quad de calibrage invalide (points confondus ou dégénérés)")
+        H_inv, _ = cv2.findHomography(TARGET_CORNERS, quad)
+        if H_inv is None or not np.isfinite(H_inv).all():
+            H_inv = None
+        self._cached_homography = H
+        self._cached_H_inv = H_inv
+        self._cached_quad = quad
+        return {"quad": quad, "H": H, "H_inv": H_inv, "source": "manual"}
 
     def detect_table_homography(
-        self, video_path: str, num_samples: int = 8
+        self,
+        video_path: str,
+        num_samples: int = 8,
+        manual_quad: Optional[np.ndarray] = None,
     ) -> Optional[Dict[str, np.ndarray]]:
         """
-        Échantillonne quelques frames réparties dans la vidéo, vote sur les
-        quads détectés (médiane par coin) et construit l'homographie.
+        Homographie de la table.
+        - manual_quad fourni (calibrage manuel) : homographie directe, garantie.
+        - sinon : échantillonnage de frames, vote médian sur les quads auto-détectés.
         """
+        if manual_quad is not None:
+            try:
+                return self.homography_from_manual_quad(manual_quad)
+            except ValueError as e:
+                logger.warning(f"Calibrage manuel invalide, repli auto : {e}")
+
         if self._cached_homography is not None:
             return {
                 "quad": self._cached_quad,
