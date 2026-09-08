@@ -52,10 +52,15 @@ const LANDMARK_INDICES = {
   RIGHT_ANKLE: 28,
 };
 
-function Skeleton3D({ landmarks, color = '#00ff88' }) {
+function Skeleton3D({ landmarks, color = '#00ff88', isWorld = false }) {
   const points = useMemo(() => {
-    return (landmarks || []).map((lm) => new THREE.Vector3(lm.x * 2 - 1, -(lm.y * 2 - 1), lm.z || 0));
-  }, [landmarks]);
+    return (landmarks || []).map((lm) =>
+      isWorld
+        ? // Landmarks monde MediaPipe : mètres, origine au centre des hanches, y vers le bas
+          new THREE.Vector3(-lm.x * 1.2, -lm.y * 1.2, -lm.z * 1.2)
+        : new THREE.Vector3(lm.x * 2 - 1, -(lm.y * 2 - 1), lm.z || 0)
+    );
+  }, [landmarks, isWorld]);
 
   const linePositions = useMemo(() => {
     const coords = [];
@@ -116,6 +121,7 @@ export default function PoseAnalysis({ results }) {
   const phases = poseAnalysis.phases || {};
   const kinetic = poseAnalysis.kinetic_chain || {};
   const heatmap = poseAnalysis.player_heatmap || {};
+  const contactFrame = poseAnalysis.frames?.[phases.contact?.frame_idx || 0];
 
   const referenceLandmarks = comparison?.reference_landmarks?.[0];
 
@@ -263,17 +269,17 @@ export default function PoseAnalysis({ results }) {
                   <directionalLight position={[2, 2, 2]} />
                   <gridHelper args={[4, 20]} />
                   <OrbitControls />
-                  {poseAnalysis.frames?.[phases.contact?.frame_idx || 0]?.poses?.[0] && (
-                    <Skeleton3D
-                      landmarks={
-                        poseAnalysis.frames[phases.contact?.frame_idx || 0].poses[0]
-                      }
-                      color="#00ff88"
-                    />
-                  )}
+                  {contactFrame?.world_poses?.[0] ? (
+                    <Skeleton3D landmarks={contactFrame.world_poses[0]} isWorld color="#00ff88" />
+                  ) : contactFrame?.poses?.[0] ? (
+                    <Skeleton3D landmarks={contactFrame.poses[0]} color="#00ff88" />
+                  ) : null}
                 </Canvas>
               </div>
               <p className="text-sm text-gray-500 mt-2">
+                {poseAnalysis.has_world_landmarks
+                  ? 'Reconstruction 3D réelle (landmarks monde MediaPipe).'
+                  : 'Projection 3D à partir des landmarks image.'}{' '}
                 Faites glisser pour tourner, utilisez la molette pour zoomer.
               </p>
             </CardContent>
@@ -296,14 +302,11 @@ export default function PoseAnalysis({ results }) {
                       <directionalLight position={[2, 2, 2]} />
                       <gridHelper args={[4, 20]} />
                       <OrbitControls />
-                      {poseAnalysis.frames?.[phases.contact?.frame_idx || 0]?.poses?.[0] && (
-                        <Skeleton3D
-                          landmarks={
-                            poseAnalysis.frames[phases.contact?.frame_idx || 0].poses[0]
-                          }
-                          color="#3b82f6"
-                        />
-                      )}
+                      {contactFrame?.world_poses?.[0] ? (
+                        <Skeleton3D landmarks={contactFrame.world_poses[0]} isWorld color="#3b82f6" />
+                      ) : contactFrame?.poses?.[0] ? (
+                        <Skeleton3D landmarks={contactFrame.poses[0]} color="#3b82f6" />
+                      ) : null}
                     </Canvas>
                   </div>
                 </div>

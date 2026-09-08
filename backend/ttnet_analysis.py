@@ -14,6 +14,8 @@ from scipy import ndimage
 from collections import deque
 import time
 
+from ball_tracker import BallTracker, get_onnx_ball_detector
+
 logger = logging.getLogger(__name__)
 
 class BallDetector:
@@ -29,58 +31,61 @@ class BallDetector:
         self.ball_history = deque(maxlen=30)  # Track ball positions over time
         self.confidence_threshold = 0.7
         
-    def detect_ball_global(self, frame: np.ndarray) -> List[Tuple[int, int, float]]:
-        """
-        Global stage: Detect potential ball candidates using color and shape
-        Returns: List of (x, y, confidence) tuples
-        """
+    def _candidates_from_mask(self, mask: np.ndarray) -> List[Tuple[int, int, float]]:
+        """Extrait les candidats balle d'un masque binaire (filtre taille + circularité)."""
         candidates = []
-        
-        # Convert to HSV for better color filtering
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        
-        # Define orange ball color range (typical table tennis ball)
-        # Orange/White ball detection
-        lower_orange = np.array([5, 50, 50])
-        upper_orange = np.array([25, 255, 255])
-        
-        lower_white = np.array([0, 0, 200])
-        upper_white = np.array([180, 30, 255])
-        
-        # Create masks
-        mask_orange = cv2.inRange(hsv, lower_orange, upper_orange)
-        mask_white = cv2.inRange(hsv, lower_white, upper_white)
-        mask = cv2.bitwise_or(mask_orange, mask_white)
-        
-        # Morphological operations to clean up the mask
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-        
-        # Find contours
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        
         for contour in contours:
             area = cv2.contourArea(contour)
-            
+
             # Filter by area (ball size estimation)
             min_area = np.pi * (self.min_radius ** 2)
             max_area = np.pi * (self.max_radius ** 2)
-            
+
             if min_area < area < max_area:
                 # Get bounding circle
                 (x, y), radius = cv2.minEnclosingCircle(contour)
-                
+
                 if self.min_radius < radius < self.max_radius:
                     # Calculate confidence based on circularity
                     perimeter = cv2.arcLength(contour, True)
                     if perimeter > 0:
                         circularity = 4 * np.pi * area / (perimeter ** 2)
                         confidence = min(circularity, 1.0)
-                        
+
                         if confidence > self.confidence_threshold:
                             candidates.append((int(x), int(y), confidence))
-        
+        return candidates
+
+    def detect_ball_global(self, frame: np.ndarray) -> List[Tuple[int, int, float]]:
+        """
+        Global stage: Detect potential ball candidates using color and shape
+        Returns: List of (x, y, confidence) tuples
+        """
+        # Convert to HSV for better color filtering
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+        # Define orange ball color range (typical table tennis ball)
+        # Orange/White ball detection
+        lower_orange = np.array([5, 50, 50])
+        upper_orange = np.array([25, 255, 255])
+
+        lower_white = np.array([0, 0, 200])
+        upper_white = np.array([180, 30, 255])
+
+        # Create masks
+        mask_orange = cv2.inRange(hsv, lower_orange, upper_orange)
+        mask_white = cv2.inRange(hsv, lower_white, upper_white)
+
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+
+        # Traiter chaque masque séparément : combiner avant filtrage fusionnait la
+        # balle avec les grandes zones blanches du fond (mur, sol, vêtements).
+        candidates = self._candidates_from_mask(
+            cv2.morphologyEx(mask_orange, cv2.MORPH_OPEN, kernel)
+        )
+        candidates.extend(self._candidates_from_mask(mask_white))
+
         return candidates
     
     def detect_ball_local(self, frame: np.ndarray, candidates: List[Tuple[int, int, float]]) -> Optional[Tuple[int, int, float]]:
@@ -535,6 +540,10 @@ class TTNetAnalyzer:
         self.ball_detector = BallDetector()
         self.player_segmentation = PlayerSegmentation()
         self.event_spotter = EventSpotter()
+        # Détecteur de balle ONNX (None -> repli heuristique automatique)
+        self.onnx_detector = get_onnx_ball_detector()
+        self.ball_tracker = BallTracker()
+        self.fps = 30.0
         self.frame_count = 0
         self.analysis_results = {
             'ball_detections': [],
@@ -542,20 +551,34 @@ class TTNetAnalyzer:
             'events': [],
             'scene_analysis': []
         }
-    
-    def analyze_frame(self, frame: np.ndarray) -> Dict[str, Any]:
+
+    def analyze_frame(
+        self,
+        frame: np.ndarray,
+        video_frame_idx: Optional[int] = None,
+        fps: Optional[float] = None,
+    ) -> Dict[str, Any]:
         """
         Analyze a single frame using all TTNet modules
+
+        video_frame_idx / fps permettent d'horodater les résultats en temps vidéo
+        (au lieu de l'horloge murale), ce qui est indispensable pour l'analyse de
+        match et le montage auto.
         """
         self.frame_count += 1
+        if fps:
+            self.fps = fps
+        video_ts = (video_frame_idx / fps) if (video_frame_idx is not None and fps) else time.time()
         frame_result = {
             'frame_number': self.frame_count,
+            'video_frame_idx': video_frame_idx if video_frame_idx is not None else self.frame_count,
+            'video_timestamp': round(video_ts, 4),
             'timestamp': time.time(),
             'ball_position': None,
             'events': [],
             'analysis_quality': 0.0
         }
-        
+
         try:
             # 1. Scene segmentation
             segmentation_masks = self.player_segmentation.segment_scene(frame)
@@ -565,10 +588,21 @@ class TTNetAnalyzer:
                 name: float(np.sum(mask > 0) / mask.size)
                 for name, mask in segmentation_masks.items()
             }
-            
-            # 2. Ball detection (two-stage)
-            ball_candidates = self.ball_detector.detect_ball_global(frame)
-            ball_position = self.ball_detector.detect_ball_local(frame, ball_candidates)
+
+            # 2. Ball detection : modèle ONNX si disponible, avec repli heuristique
+            #    frame par frame (un modèle de base rate des frames ; l'hybride
+            #    maximise le taux de détection en attendant un modèle fine-tuné).
+            if self.onnx_detector is not None:
+                candidates = self.onnx_detector.detect(frame)
+                if not candidates:
+                    candidates = self.ball_detector.detect_ball_global(frame)
+                tracked = self.ball_tracker.update(candidates, timestamp=video_ts)
+                ball_position = (
+                    (tracked[0], tracked[1], tracked[2]) if tracked else None
+                )
+            else:
+                ball_candidates = self.ball_detector.detect_ball_global(frame)
+                ball_position = self.ball_detector.detect_ball_local(frame, ball_candidates)
             frame_result['ball_position'] = ball_position
             
             # 3. Event detection
@@ -691,20 +725,21 @@ class TTNetAnalyzer:
             if not cap.isOpened():
                 logger.error(f"Cannot open video for real analysis: {video_path}")
                 return results
-            
+            fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+
             frame_count = 0
             processed_frames = 0
-            
+
             while processed_frames < max_frames:
                 ret, frame = cap.read()
                 if not ret:
                     break
-                
+
                 # Process every 5th frame for performance
                 if frame_count % 5 == 0:
                     try:
                         # Perform actual frame analysis
-                        frame_result = self.analyze_frame(frame)
+                        frame_result = self.analyze_frame(frame, video_frame_idx=frame_count, fps=fps)
                         
                         # Add ball detection flag for statistics
                         ball_detected = frame_result.get('ball_position') is not None
@@ -773,7 +808,7 @@ def analyze_video_with_ttnet(video_path: str, target_fps: int = 30) -> Dict[str,
             # Process every nth frame
             if frame_index % frame_skip == 0:
                 try:
-                    frame_analysis = analyzer.analyze_frame(frame)
+                    frame_analysis = analyzer.analyze_frame(frame, video_frame_idx=frame_index, fps=fps)
                     results['frame_analyses'].append(frame_analysis)
                     analyzed_frames += 1
                     

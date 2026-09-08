@@ -35,6 +35,8 @@ from ttnet_analysis import analyze_video_with_ttn
 from video_processor import VideoProcessor
 from pose_analysis import analyze_video_pose
 from pose_reference import compare_with_reference, suggest_improvements
+from table_detector import TableDetector
+from match_analysis import build_match_analysis, extract_video_fallback_scale
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
@@ -91,6 +93,7 @@ class TechnicalAnalysis(BaseModel):
     movement_analysis: Dict[str, Any]
     ttnet_analysis: Optional[Dict[str, Any]] = None
     pose_analysis: Optional[Dict[str, Any]] = None
+    match_analysis: Optional[Dict[str, Any]] = None
 
 
 class PerformanceMetrics(BaseModel):
@@ -120,6 +123,8 @@ class AnalysisResult(BaseModel):
     pose_reference_comparison: Optional[Dict[str, Any]] = None
     pose_report: Optional[str] = None
     overlay_frames: Optional[List[str]] = None
+    match_analysis: Optional[Dict[str, Any]] = None
+    training_plan: Optional[Dict[str, Any]] = None
 
 
 # FastAPI app -------------------------------------------------------------------
@@ -320,7 +325,45 @@ def _create_video_segment(input_path: str, output_path: str, start: float, durat
         return False
 
 
-def _compile_videos(video_path: str, analysis_id: str) -> Optional[Dict[str, Optional[str]]]:
+def _compile_auto_edit(video_path: str, out_dir: Path, rallies: List[Dict[str, Any]]) -> Optional[str]:
+    """Montage auto : concatène les échanges réellement détectés (sans temps morts)."""
+    if not rallies:
+        return None
+    segments_file = out_dir / "auto_edit_segments.txt"
+    with open(segments_file, "w", encoding="utf-8") as f:
+        for rally in rallies[:40]:  # garde-fou : 40 échanges max
+            start = max(0.0, float(rally["start_time"]) - 0.5)
+            end = float(rally["end_time"]) + 1.0
+            f.write(f"file '{Path(video_path).as_posix()}'\n")
+            f.write(f"inpoint {start}\n")
+            f.write(f"outpoint {end}\n")
+
+    output_path = out_dir / "auto_edit.mp4"
+    try:
+        subprocess.run(
+            [
+                "ffmpeg", "-y",
+                "-f", "concat", "-safe", "0",
+                "-i", str(segments_file),
+                "-c", "copy",
+                str(output_path),
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=300,
+        )
+        return str(output_path) if output_path.exists() else None
+    except Exception as e:
+        logger.error(f"Auto-edit compilation failed: {e}")
+        return None
+
+
+def _compile_videos(
+    video_path: str,
+    analysis_id: str,
+    detected_rallies: Optional[List[Dict[str, Any]]] = None,
+) -> Optional[Dict[str, Optional[str]]]:
     if not _has_ffmpeg():
         logger.info("FFmpeg not available, skipping video compilations")
         return None
@@ -335,6 +378,12 @@ def _compile_videos(video_path: str, analysis_id: str) -> Optional[Dict[str, Opt
         out_dir.mkdir(parents=True, exist_ok=True)
 
         compilations: Dict[str, Optional[str]] = {}
+
+        # Montage auto prioritaire : échanges réellement détectés par le tracker
+        if detected_rallies:
+            auto_edit = _compile_auto_edit(video_path, out_dir, detected_rallies)
+            if auto_edit:
+                compilations["auto_edit"] = auto_edit
 
         segments = [
             ("match_compilation", 0, min(60, duration)),
@@ -430,8 +479,84 @@ def _generate_pose_report(
     pose_results: Dict[str, Any],
     pose_comparison: Dict[str, Any],
     performance_metrics: PerformanceMetrics,
+    match_analysis: Optional[Dict[str, Any]] = None,
 ) -> str:
     """Génère un rapport textuel sur la pose. Utilise un LLM si configuré, sinon fallback."""
+    static_report = _build_static_pose_report(pose_results, pose_comparison, performance_metrics, match_analysis)
+
+    llm_report = _generate_llm_report(pose_results, pose_comparison, performance_metrics, match_analysis)
+    if llm_report:
+        return llm_report
+    return static_report
+
+
+def _generate_llm_report(
+    pose_results: Dict[str, Any],
+    pose_comparison: Dict[str, Any],
+    performance_metrics: PerformanceMetrics,
+    match_analysis: Optional[Dict[str, Any]],
+) -> Optional[str]:
+    """Rapport Coach IA via OpenAI. Retourne None si la clé/le package sont absents."""
+    if not OPENAI_API_KEY:
+        return None
+    try:
+        import openai
+    except ImportError:
+        return None
+
+    def _call() -> Optional[str]:
+        try:
+            client = openai.OpenAI(api_key=OPENAI_API_KEY)
+            prompt = (
+                "Tu es un coach de tennis de table. Rédige en français un rapport technique "
+                "structuré (markdown) à partir des données d'analyse suivantes.\n\n"
+                "## Métriques de performance\n"
+                f"{performance_metrics.model_dump_json(indent=2)}\n\n"
+            )
+            if "error" not in pose_results:
+                prompt += (
+                    "## Analyse de pose\n"
+                    f"Angles au contact : {pose_results.get('contact_angles', {})}\n"
+                    f"Chaîne cinétique : {pose_results.get('kinetic_chain', {})}\n"
+                    f"Phases du geste : {pose_results.get('phases', {})}\n\n"
+                    "## Comparaison au modèle de référence\n"
+                    f"{pose_comparison}\n\n"
+                )
+            if match_analysis:
+                ma = dict(match_analysis)
+                # Alléger le prompt : retirer les listes volumineuses
+                ma.pop("bounces", None)
+                ma["rallies"] = ma.get("rally_summary", {})
+                prompt += "## Analyse de match\n" + str(ma) + "\n\n"
+            prompt += (
+                "Consignes : identifie 2-3 forces et 2-3 axes d'amélioration concrets, "
+                "cite les chiffres pertinents (angles, vitesses, longueurs d'échanges), "
+                "reste encourageant et factuel. Ne dépasse pas 400 mots."
+            )
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Tu es un coach expert de tennis de table."},
+                    {"role": "user", "content": prompt},
+                ],
+                max_tokens=900,
+                temperature=0.6,
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            logger.warning(f"Rapport LLM impossible, fallback statique: {e}")
+            return None
+
+    return _call()
+
+
+def _build_static_pose_report(
+    pose_results: Dict[str, Any],
+    pose_comparison: Dict[str, Any],
+    performance_metrics: PerformanceMetrics,
+    match_analysis: Optional[Dict[str, Any]] = None,
+) -> str:
+    """Rapport statique (fallback sans LLM)."""
     angles = pose_results.get("contact_angles", {}) if "error" not in pose_results else {}
     kinetic = pose_results.get("kinetic_chain", {}) if "error" not in pose_results else {}
     phases = pose_results.get("phases", {}) if "error" not in pose_results else {}
@@ -467,14 +592,161 @@ def _generate_pose_report(
             f"- Début de l'armé : {phases.get('backswing', {}).get('start_timestamp', 'N/A')}s",
             f"- Contact estimé : {phases.get('contact', {}).get('timestamp', 'N/A')}s",
             f"- Fin de l'accompagnement : {phases.get('follow_through', {}).get('end_timestamp', 'N/A')}s",
-            "",
-            "### Recommandations",
         ]
     )
+
+    if match_analysis and match_analysis.get("available"):
+        rally_summary = match_analysis.get("rally_summary", {})
+        speeds = match_analysis.get("ball_speed", {})
+        placement = match_analysis.get("placement", {})
+        lines.extend(
+            [
+                "",
+                "### Analyse de match",
+                f"- Échanges détectés : {rally_summary.get('total_rallies', 0)} "
+                f"(moyenne {rally_summary.get('average_strokes', 0)} coups)",
+            ]
+        )
+        if speeds.get("max_speed_ms") is not None:
+            lines.append(
+                f"- Vitesse max de balle : {speeds.get('max_speed_ms')} m/s "
+                f"(moyenne {speeds.get('average_speed_ms')} m/s)"
+            )
+        if placement.get("available"):
+            lines.append(f"- Zones d'impact principales : {placement.get('zones', {})}")
+
+    lines.extend(["", "### Recommandations"])
     for suggestion in suggest_improvements(pose_results, pose_comparison):
         lines.append(f"- {suggestion}")
 
     return "\n".join(lines)
+
+
+class PlanRequest(BaseModel):
+    goal: str = "progression_generale"
+    priority: str = "technique_coups"
+    weekly_frequency: int = 3
+    session_duration_min: int = 60
+    difficulty: str = "intermediaire"
+    equipment: List[str] = ["table", "raquette", "balles"]
+    injuries: Optional[str] = None
+
+
+def _generate_static_training_plan(
+    params: PlanRequest,
+    match_analysis: Optional[Dict[str, Any]] = None,
+    pose_results: Optional[Dict[str, Any]] = None,
+    performance_metrics: Optional[PerformanceMetrics] = None,
+) -> Dict[str, Any]:
+    """Plan d'entraînement structuré sans LLM, basé sur les données d'analyse."""
+    rally_summary = (match_analysis or {}).get("rally_summary", {})
+    improvement_areas = (performance_metrics.improvement_areas if performance_metrics else []) or []
+
+    focus_blocks = {
+        "technique_coups": "Régularité coup droit / revers (topspin 15 min, poussette 10 min)",
+        "service_remise": "Services variés + remises courtes (20 min)",
+        "deplacement": "Jeu de jambes : déplacements latéraux et récupération (15 min)",
+        "physique": "Gainage et explosivité (15 min)",
+    }
+    priority_block = focus_blocks.get(params.priority, focus_blocks["technique_coups"])
+    if rally_summary.get("average_strokes", 0) and rally_summary["average_strokes"] < 5:
+        priority_block += " — beaucoup d'échanges courts : travailler la remise et le contrôle"
+
+    sessions = []
+    for i in range(max(1, min(7, params.weekly_frequency))):
+        sessions.append(
+            {
+                "session": i + 1,
+                "duree_min": params.session_duration_min,
+                "echauffement": "10 min : footwork + balles régulières",
+                "bloc_prioritaire": priority_block,
+                "bloc_secondaire": improvement_areas[0] if improvement_areas else "Points libres en match",
+                "retour_calme": "5 min : services coupés + étirements",
+            }
+        )
+
+    return {
+        "source": "statique",
+        "goal": params.goal,
+        "difficulty": params.difficulty,
+        "weekly_frequency": params.weekly_frequency,
+        "improvement_areas_targeted": improvement_areas[:3],
+        "sessions": sessions,
+        "precautions": params.injuries or None,
+    }
+
+
+def _generate_llm_training_plan(
+    params: PlanRequest,
+    match_analysis: Optional[Dict[str, Any]] = None,
+    pose_results: Optional[Dict[str, Any]] = None,
+    performance_metrics: Optional[PerformanceMetrics] = None,
+) -> Optional[Dict[str, Any]]:
+    """Plan d'entraînement via OpenAI. Retourne None si clé/package absents ou erreur."""
+    if not OPENAI_API_KEY:
+        return None
+    try:
+        import openai
+    except ImportError:
+        return None
+
+    def _call() -> Optional[Dict[str, Any]]:
+        try:
+            client = openai.OpenAI(api_key=OPENAI_API_KEY)
+            context = (
+                f"Profil : objectif={params.goal}, priorité={params.priority}, "
+                f"fréquence={params.weekly_frequency}/semaine, durée séance={params.session_duration_min} min, "
+                f"niveau={params.difficulty}, matériel={params.equipment}, "
+                f"blessures={params.injuries or 'aucune'}.\n"
+            )
+            if match_analysis:
+                ma = dict(match_analysis)
+                ma.pop("bounces", None)
+                ma["rallies"] = ma.get("rally_summary", {})
+                context += f"Données d'analyse de match : {ma}\n"
+            if performance_metrics:
+                context += (
+                    f"Métriques : {performance_metrics.model_dump_json(exclude_none=True)}\n"
+                )
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "Tu es un entraîneur de tennis de table. Réponds UNIQUEMENT en JSON valide : "
+                            '{"source":"llm","summary":str,"weekly_focus":[str],"sessions":[{"session":int,'
+                            '"duree_min":int,"echauffement":str,"bloc_prioritaire":str,'
+                            '"bloc_secondaire":str,"retour_calme":str}],"conseils":[str]}'
+                        ),
+                    },
+                    {"role": "user", "content": context + "Génère le plan d'entraînement hebdomadaire."},
+                ],
+                response_format={"type": "json_object"},
+                max_tokens=1200,
+                temperature=0.5,
+            )
+            import json
+            plan = json.loads(response.choices[0].message.content)
+            plan.setdefault("goal", params.goal)
+            return plan
+        except Exception as e:
+            logger.warning(f"Plan LLM impossible, fallback statique: {e}")
+            return None
+
+    return _call()
+
+
+def _generate_training_plan(
+    params: PlanRequest,
+    match_analysis: Optional[Dict[str, Any]] = None,
+    pose_results: Optional[Dict[str, Any]] = None,
+    performance_metrics: Optional[PerformanceMetrics] = None,
+) -> Dict[str, Any]:
+    llm_plan = _generate_llm_training_plan(params, match_analysis, pose_results, performance_metrics)
+    if llm_plan:
+        return llm_plan
+    return _generate_static_training_plan(params, match_analysis, pose_results, performance_metrics)
 
 
 async def _process_video_analysis(analysis_id: str, video_path: str, params: AnalysisRequest):
@@ -491,6 +763,15 @@ async def _process_video_analysis(analysis_id: str, video_path: str, params: Ana
 
         analysis_status[analysis_id].progress = 30.0
         analysis_status[analysis_id].current_step = "Traitement vidéo et détection des échanges..."
+
+        # 1bis. Analyse de match (table + homographie + placement/vitesses/échanges)
+        try:
+            match_analysis = await asyncio.get_event_loop().run_in_executor(
+                None, build_match_analysis, ttnet_results, video_path
+            )
+        except Exception as e:
+            logger.warning(f"Match analysis failed (non-blocking): {e}")
+            match_analysis = None
 
         # 2. Video processor (rallies + technical analysis)
         # Non bloquant : les compilations servies sont générées séparément
@@ -551,10 +832,13 @@ async def _process_video_analysis(analysis_id: str, video_path: str, params: Ana
             ]
         recommendations = list(dict.fromkeys(recommendations))[:6]
 
-        # 8. Video compilations (optional)
+        # 8. Video compilations (optional) — montage auto basé sur les échanges détectés
         analysis_status[analysis_id].progress = 85.0
         analysis_status[analysis_id].current_step = "Compilation des vidéos (si FFmpeg disponible)..."
-        video_compilations = _compile_videos(video_path, analysis_id)
+        detected_rallies = (match_analysis or {}).get("rallies") or []
+        video_compilations = _compile_videos(
+            video_path, analysis_id, detected_rallies=detected_rallies
+        )
 
         # 9. Video info
         video_info = _get_video_info(video_path)
@@ -566,7 +850,35 @@ async def _process_video_analysis(analysis_id: str, video_path: str, params: Ana
             highlights = [min(duration, h) for h in highlights]
 
         # 11. Pose report (LLM or fallback)
-        pose_report = _generate_pose_report(pose_results, pose_comparison, performance_metrics)
+        pose_report = await asyncio.get_event_loop().run_in_executor(
+            None,
+            _generate_pose_report,
+            pose_results,
+            pose_comparison,
+            performance_metrics,
+            match_analysis,
+        )
+
+        # 11bis. Plan d'entraînement personnalisé (LLM ou fallback statique)
+        plan_request = PlanRequest(
+            goal="progression_generale",
+            priority=(
+                params.focus_areas[0]
+                if params.focus_areas
+                and params.focus_areas[0]
+                in ("technique_coups", "service_remise", "deplacement", "physique")
+                else "technique_coups"
+            ),
+            difficulty=params.skill_level,
+        )
+        training_plan = await asyncio.get_event_loop().run_in_executor(
+            None,
+            _generate_training_plan,
+            plan_request,
+            match_analysis or {},
+            pose_results,
+            performance_metrics,
+        )
 
         # 12. Build final result
         technical_analysis = TechnicalAnalysis(
@@ -583,6 +895,7 @@ async def _process_video_analysis(analysis_id: str, video_path: str, params: Ana
             },
             ttnet_analysis=ttnet_results.get("match_statistics", {}),
             pose_analysis=pose_results if "error" not in pose_results else None,
+            match_analysis=match_analysis,
         )
 
         result = AnalysisResult(
@@ -599,6 +912,8 @@ async def _process_video_analysis(analysis_id: str, video_path: str, params: Ana
             pose_reference_comparison=pose_comparison,
             pose_report=pose_report,
             overlay_frames=pose_results.get("overlay_frames") if "error" not in pose_results else None,
+            match_analysis=match_analysis,
+            training_plan=training_plan,
         )
 
         analysis_results[analysis_id] = result
@@ -755,3 +1070,23 @@ async def get_pose_overlay_frame(analysis_id: str, frame_index: int):
 @app.get("/api/")
 async def root():
     return {"message": "PingPro API - Analyse IA Tennis de Table"}
+
+
+@app.post("/api/plan")
+async def generate_training_plan(request: PlanRequest):
+    """Plan d'entraînement personnalisé (LLM si configuré, sinon statique)."""
+    latest_match_analysis = None
+    latest_metrics = None
+    if analysis_results:
+        latest = max(analysis_results.values(), key=lambda r: r.video_info.duration_seconds)
+        latest_match_analysis = latest.match_analysis
+        latest_metrics = latest.performance_metrics
+    plan = await asyncio.get_event_loop().run_in_executor(
+        None,
+        _generate_training_plan,
+        request,
+        latest_match_analysis,
+        {},
+        latest_metrics,
+    )
+    return plan

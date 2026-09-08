@@ -623,7 +623,7 @@ const ResultsPage = ({ results, onReset }) => {
 
       <div className="container mx-auto px-6 py-8">
         <Tabs defaultValue="match-compilation" className="space-y-8">
-          <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 bg-white shadow-sm">
+          <TabsList className="grid w-full grid-cols-3 md:grid-cols-7 bg-white shadow-sm">
             <TabsTrigger value="match-compilation" className="flex items-center space-x-2">
               <Video className="w-4 h-4" />
               <span>Match Compilé</span>
@@ -644,6 +644,10 @@ const ResultsPage = ({ results, onReset }) => {
               <Target className="w-4 h-4" />
               <span>Impacts Balle</span>
             </TabsTrigger>
+            <TabsTrigger value="match-analysis" className="flex items-center space-x-2">
+              <BarChart3 className="w-4 h-4" />
+              <span>Analyse de Match</span>
+            </TabsTrigger>
             <TabsTrigger value="pose-analysis" className="flex items-center space-x-2">
               <Activity className="w-4 h-4" />
               <span>Coach IA Pose</span>
@@ -652,6 +656,17 @@ const ResultsPage = ({ results, onReset }) => {
 
           {/* ---------------- Match Compilé ---------------- */}
           <TabsContent value="match-compilation" className="space-y-8">
+            {compilations.auto_edit && (
+              <VideoCard
+                title="Montage Auto — Échanges sans temps morts"
+                badge="Échanges détectés par IA"
+                description="Compilation des échanges réellement détectés par le suivi de balle"
+                videoType="auto_edit"
+                compilations={compilations}
+                analysisId={analysisId}
+                iconColor="text-blue-500"
+              />
+            )}
             <VideoCard
               title="Vidéo Compilée du Match"
               badge="Temps morts supprimés"
@@ -1331,6 +1346,146 @@ const ResultsPage = ({ results, onReset }) => {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* ---------------- Analyse de Match ---------------- */}
+          <TabsContent value="match-analysis" className="space-y-8">
+            {results.match_analysis ? (
+              <>
+                <div className="grid md:grid-cols-4 gap-4">
+                  <StatTile
+                    value={num(results.match_analysis.rally_summary?.total_rallies, 0)}
+                    label="Échanges détectés"
+                    colorClass="text-blue-600"
+                    bgClass="bg-blue-50"
+                  />
+                  <StatTile
+                    value={num(results.match_analysis.rally_summary?.average_strokes, 0)}
+                    label="Coups / échange (moy.)"
+                    colorClass="text-green-600"
+                    bgClass="bg-green-50"
+                  />
+                  <StatTile
+                    value={
+                      results.match_analysis.ball_speed?.max_speed_ms != null
+                        ? `${results.match_analysis.ball_speed.max_speed_ms} m/s`
+                        : num(results.match_analysis.ball_speed?.max_speed_pixels_per_frame, 0)
+                    }
+                    label="Vitesse max de balle"
+                    colorClass="text-purple-600"
+                    bgClass="bg-purple-50"
+                  />
+                  <StatTile
+                    value={num(results.match_analysis.bounces?.length, 0)}
+                    label="Rebonds sur table"
+                    colorClass="text-orange-600"
+                    bgClass="bg-orange-50"
+                  />
+                </div>
+
+                {results.match_analysis.placement?.available && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center space-x-2">
+                        <Target className="w-5 h-5 text-blue-500" />
+                        <span>Placement de la balle sur la table</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex flex-wrap justify-center gap-8">
+                        {results.match_analysis.placement.heatmap_grid.map((half, h) => (
+                          <div key={`half-${h}`} className="text-center">
+                            <svg width="240" height="160" viewBox="0 0 240 160" className="border border-gray-300 rounded">
+                              <rect x="0" y="0" width="240" height="160" fill="#2563eb" opacity="0.08" />
+                              {half.map((row, l) =>
+                                row.map((count, w) => {
+                                  const maxCount = Math.max(1, ...results.match_analysis.placement.heatmap_grid.flat(2));
+                                  const intensity = count / maxCount;
+                                  return (
+                                    <rect
+                                      key={`z-${h}-${l}-${w}`}
+                                      x={l * 80}
+                                      y={w * 53.3}
+                                      width="80"
+                                      height="53.3"
+                                      fill={count > 0 ? '#3b82f6' : 'transparent'}
+                                      opacity={count > 0 ? 0.15 + 0.75 * intensity : 0}
+                                      stroke="#fff"
+                                      strokeWidth="1"
+                                    />
+                                  );
+                                })
+                              )}
+                              <line x1="0" y1="80" x2="240" y2="80" stroke="#fff" strokeWidth="2" />
+                            </svg>
+                            <p className="text-sm text-gray-600 mt-2">
+                              {h === 0 ? 'Moitié 1' : 'Moitié 2'} — colonnes : fond → près du filet
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-4 flex flex-wrap justify-center gap-2">
+                        {Object.entries(results.match_analysis.placement.zones || {}).map(
+                          ([zone, count]) => (
+                            <Badge key={zone} variant="secondary">
+                              {zone} : {count}
+                            </Badge>
+                          )
+                        )}
+                      </div>
+                      {!results.match_analysis.table_detected && (
+                        <p className="text-xs text-gray-400 text-center mt-3">
+                          Table non détectée : vitesse estimée en pixels, placement indisponible.
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <BarChart3 className="w-5 h-5 text-green-500" />
+                      <span>Phases et moments clés</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid md:grid-cols-3 gap-4">
+                      <div className="p-4 bg-gray-50 rounded-lg text-center">
+                        <div className="text-2xl font-bold text-gray-800">
+                          {num(results.match_analysis.rally_summary?.courts_1_3_coups, 0)}
+                        </div>
+                        <div className="text-sm text-gray-600">Échanges courts (1-3 coups)</div>
+                      </div>
+                      <div className="p-4 bg-gray-50 rounded-lg text-center">
+                        <div className="text-2xl font-bold text-gray-800">
+                          {num(results.match_analysis.rally_summary?.moyens_4_7_coups, 0)}
+                        </div>
+                        <div className="text-sm text-gray-600">Échanges moyens (4-7 coups)</div>
+                      </div>
+                      <div className="p-4 bg-gray-50 rounded-lg text-center">
+                        <div className="text-2xl font-bold text-gray-800">
+                          {num(results.match_analysis.rally_summary?.longs_8_plus, 0)}
+                        </div>
+                        <div className="text-sm text-gray-600">Échanges longs (8+ coups)</div>
+                      </div>
+                    </div>
+                    {results.match_analysis.key_moments?.longest_rally && (
+                      <p className="text-sm text-gray-600 mt-4">
+                        Plus long échange : <strong>{results.match_analysis.key_moments.longest_rally.stroke_count} coups</strong> à{' '}
+                        {results.match_analysis.key_moments.longest_rally.start_time}s.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              </>
+            ) : (
+              <Card>
+                <CardContent className="py-10 text-center text-gray-500">
+                  Aucune analyse de match disponible pour cette vidéo.
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* ---------------- Coach IA Pose ---------------- */}

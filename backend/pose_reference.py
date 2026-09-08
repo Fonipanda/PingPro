@@ -2,15 +2,23 @@
 Comparaison de pose avec un modèle de référence.
 Utilise Dynamic Time Warping (DTW) pour aligner temporellement deux séquences
 de landmarks et calculer un score de similarité.
+
+Les références sont lues depuis backend/references/<stroke_type>.json
+(bibliothèque remplaçable par des références capturées sur de vrais joueurs).
+Sans fichier, un modèle synthétique de secours est utilisé.
 """
 
+import json
 import logging
 import math
+from pathlib import Path
 from typing import Dict, List, Optional
 
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+REFERENCES_DIR = Path(__file__).parent / "references"
 
 
 def _extract_pose_sequence(frames: List[Dict], joint_names: List[str]) -> np.ndarray:
@@ -65,9 +73,36 @@ def _dtw_distance(seq_a: np.ndarray, seq_b: np.ndarray) -> float:
     return float(dtw[n, m])
 
 
+def _load_reference_from_library(stroke_type: str) -> Optional[np.ndarray]:
+    """
+    Charge une référence depuis backend/references/<stroke_type>.json.
+    Format attendu :
+    {
+      "joint_names": ["right_shoulder", ...],   # optionnel, défaut JOINT_NAMES
+      "frames": [[x, y, x, y, ...], ...]        # T x (2 * len(joint_names))
+    }
+    """
+    path = REFERENCES_DIR / f"{stroke_type}.json"
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        joint_names = data.get("joint_names", JOINT_NAMES)
+        seq = np.array(data["frames"], dtype=float)
+        if seq.ndim != 2 or seq.shape[1] != 2 * len(joint_names):
+            logger.warning(f"Référence invalide ({path.name}) : dimensions inattendues")
+            return None
+        logger.info(f"Référence chargée depuis la bibliothèque : {path.name}")
+        return seq
+    except Exception as e:
+        logger.warning(f"Erreur de lecture de la référence {path.name}: {e}")
+        return None
+
+
 def _build_reference_sequence(stroke_type: str) -> Optional[np.ndarray]:
     """
-    Modèle de référence synthétique pour quelques coups de tennis de table.
+    Référence de secours synthétique (utilisée uniquement si la bibliothèque
+    backend/references/ ne contient pas le coup demandé).
     Valeurs normalisées approximatives [x, y] dans [0, 1].
     """
     refs = {
@@ -94,6 +129,14 @@ def _build_reference_sequence(stroke_type: str) -> Optional[np.ndarray]:
     return np.array(seq) if seq else None
 
 
+def get_reference_sequence(stroke_type: str) -> Optional[np.ndarray]:
+    """Référence prioritaire depuis la bibliothèque, sinon modèle synthétique."""
+    ref = _load_reference_from_library(stroke_type)
+    if ref is not None:
+        return ref
+    return _build_reference_sequence(stroke_type)
+
+
 JOINT_NAMES = [
     "right_shoulder",
     "right_elbow",
@@ -117,7 +160,7 @@ def compare_with_reference(
     Compare la séquence de poses utilisateur avec un modèle de référence.
     """
     user_seq = _extract_pose_sequence(frames, JOINT_NAMES)
-    ref_seq = _build_reference_sequence(stroke_type)
+    ref_seq = get_reference_sequence(stroke_type)
 
     if ref_seq is None or len(user_seq) == 0:
         return {

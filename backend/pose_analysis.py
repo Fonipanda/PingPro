@@ -164,11 +164,18 @@ class PoseAnalyzer:
                         for pose in results.pose_landmarks:
                             detected_poses.append([_landmark_to_dict(lm) for lm in pose])
 
+                    # Landmarks monde (3D réel en mètres, origine au centre des hanches)
+                    detected_world_poses = []
+                    if results.pose_world_landmarks:
+                        for pose in results.pose_world_landmarks:
+                            detected_world_poses.append([_landmark_to_dict(lm) for lm in pose])
+
                     frames.append(
                         {
                             "frame_idx": frame_idx,
                             "timestamp": round(frame_idx / fps, 3),
                             "poses": detected_poses,
+                            "world_poses": detected_world_poses,
                         }
                     )
                     processed += 1
@@ -523,6 +530,7 @@ def analyze_video_pose(
         "kinetic_chain": kinetic_chain,
         "player_heatmap": player_heatmap,
         "overlay_frames": overlay_paths,
+        "has_world_landmarks": any(f.get("world_poses") for f in frames),
         "frames": frames[:200],  # limit payload size for comparison/3D view
     }
 

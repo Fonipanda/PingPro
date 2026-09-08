@@ -14,6 +14,11 @@ pillow>=10.0.0
 scikit-learn>=1.3.0
 scipy>=1.10.0
 
+# Détection de balle par modèle ONNX (repli heuristique si absent)
+onnxruntime>=1.16.0
+# Windows iGPU AMD : décommenter pour l'accélération DirectML
+# onnxruntime-directml>=1.16.0
+
 # Optional: only required if you enable OpenAI pose reports
 # openai>=1.0.0
 

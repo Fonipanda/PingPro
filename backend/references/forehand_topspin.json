@@ -1,0 +1,22 @@
+{
+ "joint_names": [
+  "right_shoulder",
+  "right_elbow",
+  "right_wrist",
+  "right_hip",
+  "right_knee",
+  "left_shoulder",
+  "left_elbow",
+  "left_wrist",
+  "left_hip",
+  "left_knee",
+  "nose"
+ ],
+ "source": "synthetic_baseline",
+ "description": "Topspin coup droit : 3 poses cles (arme, frappe, accompagnement). Remplacez par des references capturees sur un joueur de reference.",
+ "frames": [
+  [0.55, 0.35, 0.45, 0.45, 0.40, 0.55, 0.55, 0.60, 0.55, 0.75, 0.45, 0.35, 0.35, 0.45, 0.30, 0.55, 0.45, 0.60, 0.45, 0.75, 0.50, 0.10],
+  [0.55, 0.35, 0.60, 0.42, 0.70, 0.48, 0.55, 0.60, 0.60, 0.72, 0.45, 0.35, 0.40, 0.45, 0.35, 0.55, 0.45, 0.60, 0.50, 0.72, 0.50, 0.10],
+  [0.55, 0.35, 0.65, 0.40, 0.75, 0.45, 0.55, 0.60, 0.62, 0.70, 0.45, 0.35, 0.42, 0.45, 0.38, 0.55, 0.45, 0.60, 0.52, 0.70, 0.50, 0.10]
+ ]
+}
