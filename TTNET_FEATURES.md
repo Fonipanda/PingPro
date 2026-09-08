@@ -1,216 +1,86 @@
-# 🏓 PingPro - Fonctionnalités TTNet Avancées
+# PingPro — Moteur d'analyse vidéo
 
-## Vue d'ensemble
+Ce document décrit la réalité technique du moteur d'analyse (v2.1) : comment la
+balle, la table et les échanges sont détectés, avec des chiffres **mesurés** sur
+cette machine (CPU, vidéo synthétique 1280×720 à 30 fps).
 
-PingPro intègre maintenant des techniques d'analyse vidéo avancées inspirées de **TTNet: Real-time temporal and spatial video analysis of table tennis**. Cette intégration révolutionnaire combine la vision par ordinateur de pointe avec l'intelligence artificielle pour une analyse ultra-précise des performances au tennis de table.
+## 1. Détection de la balle — pipeline hybride
 
-## 🚀 Nouvelles Fonctionnalités TTNet
+La détection combine deux sources, frame par frame :
 
-### 1. **Détection de Balle Avancée (Two-Stage Ball Detection)**
+1. **Modèle ONNX** (`backend/ball_tracker.py`) : YOLO nano exporté en ONNX
+   (`backend/models/ball_yolo.onnx`), exécuté via `onnxruntime` (CPU, ou
+   DirectML sur iGPU AMD si `onnxruntime-directml` est installé). Un suivi
+   prédictif (vitesse constante + gating) associe les détections entre frames.
+2. **Heuristique TTNet** (`ttnet_analysis.BallDetector`) : masques HSV orange et
+   blanc **traités séparément** (avant la v2.1, la balle fusionnait avec les
+   zones blanches du fond), filtrage par taille + circularité.
 
-#### Stage Global
-- **Détection automatique** de la balle dans chaque frame
-- **Filtrage par couleur** : Orange et blanc (couleurs standard des balles)
-- **Analyse de forme** : Vérification de la circularité et de la taille
-- **Seuil de confiance** : > 70% pour éliminer les faux positifs
+Si le modèle ONNX ne détecte rien sur une frame (cas fréquent avec le modèle de
+base COCO sur une petite balle), l'heuristique prend le relais. Si le fichier
+modèle est absent, l'heuristique seule est utilisée.
 
-#### Stage Local (Refinement)
-- **Affinement de position** avec template matching
-- **Prédiction de mouvement** basée sur l'historique des positions
-- **Consistance temporelle** pour un suivi fluide
-- **Précision** : ~2 pixels RMSE en Full HD
+### Chiffres mesurés
 
-**Métriques affichées :**
-- Taux de détection de balle (%)
-- Qualité du suivi (Excellent/Bon/Moyen/Faible)
+| Mesure | Valeur |
+|---|---|
+| Inférence ONNX (CPU, frame 1280×720) | ~39 ms/frame |
+| Heuristique seule (même frame) | ~2–3 ms/frame |
+| Modèle de base COCO seul (`yolov8n.onnx`) | ~2/36 frames détectées sur une petite balle |
+| Pipeline hybride (ONNX + heuristique) | taux de détection élevé, précision limitée par l'heuristique |
 
-### 2. **Segmentation de Scène Intelligente**
+**Conséquence honnête** : sans fine-tuning, la précision du suivi dépend
+majoritairement de l'heuristique. Pour une vraie précision niveau "modèle
+entraîné", fine-tunez sur un dataset Roboflow "table tennis ball" :
 
-#### Segmentation des Joueurs
-- **Soustraction de fond** adaptative (MOG2)
-- **Détection de couleur de peau** pour identifier les joueurs
-- **Filtrage morphologique** pour nettoyer les masques
-- **Suivi temporel** pour la consistance
-
-#### Détection de Table
-- **Détection par couleur** : Surface verte standard
-- **Analyse de contours** : Identification de la plus grande surface
-- **Masquage précis** : Séparation table/joueurs/arrière-plan
-
-#### Détection de Tableau de Score
-- **Détection de texte** dans les zones typiques (coins)
-- **Analyse de contours** pour identifier les éléments textuels
-- **Segmentation automatique** des informations de score
-
-### 3. **Détection d'Événements (Event Spotting)**
-
-#### Rebonds de Balle
-- **Analyse de trajectoire** : Détection des changements de direction verticale
-- **Intersection table-balle** : Vérification de la position sur la table
-- **Signature de rebond** : Changement brusque de vélocité verticale
-- **Précision** : ~97% de détection des rebonds
-
-#### Impacts Filet
-- **Position centrale** : Détection dans la zone du filet
-- **Changement de trajectoire** : Analyse de l'angle de déviation
-- **Filtrage spatial** : Zone de tolérance de 30 pixels
-
-#### Services
-- **Pattern de mouvement** : Trajectoire caractéristique du service
-- **Mouvement horizontal** : Distance significative (>200px)
-- **Arc parabolique** : Détection du mouvement en arc
-- **Classification automatique** des types de services
-
-#### Fin d'Échange
-- **Perte de balle** : Absence de détection >1 seconde
-- **Analyse temporelle** : Fin automatique des rallyes
-- **Comptage des points** : Suivi du score automatique
-
-### 4. **Analyse de Trajectoire et Vitesse**
-
-#### Métriques de Vitesse
-- **Vitesse moyenne** : Pixels par frame
-- **Vitesse maximale** : Pic de vitesse atteint
-- **Consistance** : Écart-type des vitesses (smoothness)
-- **Longueur totale** : Distance parcourue par la balle
-
-#### Analyse de Mouvement
-- **Fluidité de trajectoire** : Score de régularité
-- **Changements de direction** : Points d'inflexion
-- **Accélération/Décélération** : Variations de vitesse
-- **Prédiction de trajectoire** : Estimation des positions futures
-
-## 📊 Nouvelles Métriques d'Interface
-
-### Dashboard Principal
-```
-🎯 Suivi de Balle : XX% (Précision détection)
-🏓 Rebonds : XX détectés
-⭐ Services : XX identifiés  
-🏆 Qualité : Excellent/Bon/Moyen
+```bash
+pip install ultralytics
+python backend/tools/export_ball_model.py --dataset <chemin/dataset-yolo> --epochs 30
 ```
 
-### Analyse des Échanges
-```
-📈 Longueur moyenne : X.X coups
-📊 Total échanges : XX
-🎮 Style de jeu : Offensif/Défensif/Équilibré
-```
+## 2. Détection de table et homographie (`backend/table_detector.py`)
 
-### Analyse de Mouvement
-```
-⚡ Vitesse moyenne : XX px/frame
-🚀 Vitesse maximale : XX px/frame  
-📐 Consistance : XX (régularité)
-🔍 Confiance tracking : XX%
-```
+- Masque couleur (bleu ou vert) + morphologie, plus grand contour convexe.
+- Vote médian sur les quads détectés dans 8 frames échantillonnées, filtrage des
+  quads aberrants, garde-fous contre les homographies dégénérées (NaN).
+- Homographie vers le repère réel ITTF : 2,74 × 1,525 m, filet à x = 0.
 
-## 🎯 Recommandations Enrichies
+Si la table n'est pas détectable, tout se dégrade proprement : vitesses en
+pixels/s, placement indisponible.
 
-### Basées sur la Détection de Balle
-- Si taux < 60% : "🎥 Améliorer l'éclairage et stabiliser la caméra"
-- Si qualité faible : "📹 Position perpendiculaire à la table recommandée"
+## 3. Analyse de match (`backend/match_analysis.py`)
 
-### Basées sur l'Analyse des Échanges
-- Échanges longs : "⚡ Développer des coups d'attaque"
-- Échanges courts : "🛡️ Améliorer la défense et la patience"
-- Équilibrés : "👍 Excellent équilibre - maintenir cette approche"
+Entrées : positions de balle horodatées **en temps vidéo** (corrigé en v2.1,
+avant : horloge murale).
 
-### Basées sur les Événements
-- Pas de services : "🏓 Inclure plus de services dans l'entraînement"
-- Beaucoup de fautes filet : "📐 Attention à la hauteur de balle"
-- Ratio rallye faible : "🔄 Travailler la régularité"
+- **Segmentation des échanges** : un silence de détection > 1,2 s clôt un
+  échange ; durée minimale 0,8 s ; nombre de coups estimé par traversées du
+  filet (changement de signe de dx).
+- **Placement** : grille 2 moitiés × 3 zones longueur × 3 zones largeur,
+  uniquement pour les impacts réellement sur la table (test point-in-quad).
+- **Vitesses** : m/s via homographie (filtre des sauts hors table), pixels/s
+  sinon, avec estimation approximative m/s si l'échelle de la table est connue.
+- **Rebonds** : inversion de vitesse verticale de la balle projetée sur la table.
+- **Moments clés** : plus long échange, vitesse max.
 
-### Basées sur la Trajectoire
-- Caméra instable : "🎬 Utiliser un trépied pour stabiliser"
-- Vitesse faible : "💪 Augmenter la vitesse d'exécution"
-- Vitesse excessive : "🎯 Privilégier le contrôle à la puissance"
+## 4. Montage auto
 
-## ⚡ Performance et Optimisation
+Les échanges détectés (marge ±0,5–1 s) sont découpés et concaténés par FFmpeg
+(`-f concat`, inpoint/outpoint) → `auto_edit.mp4`. Nécessite FFmpeg installé ;
+sinon les compilations sont simplement absentes du résultat.
 
-### Vitesse de Traitement
-- **Traitement temps réel** : Capable de >120 FPS sur GPU haute gamme
-- **Optimisation CPU** : Version adaptée pour serveur sans GPU
-- **Échantillonnage intelligent** : 1-2 FPS pour réduire les coûts
-- **Traitement par lots** : Analyse de 10-15 frames simultanément
+## 5. Pose 3D et références
 
-### Précision des Résultats
-- **Détection de balle** : ~95% de précision sur vidéos de qualité
-- **Segmentation joueurs** : ~96% IoU (Intersection over Union)
-- **Détection d'événements** : ~97% de précision
-- **Analyse de trajectoire** : ±2 pixels RMSE en Full HD
+- MediaPipe Pose Landmarker (modèle `pose_landmarker.task`) : landmarks image +
+  **world landmarks** (mètres, origine aux hanches) pour la vue 3D Three.js.
+- Comparaison DTW avec `backend/references/<coup>.json`. Les fichiers livrés
+  sont des bases synthétiques (3 poses clés par coup) : remplacez-les par des
+  captures réelles pour une évaluation fiable.
 
-### Optimisations Techniques
-- **Multi-threading** : Traitement parallèle des frames
-- **Cache intelligent** : Réutilisation des calculs précédents
-- **Filtrage adaptatif** : Ajustement automatique des seuils
-- **Nettoyage mémoire** : Gestion optimale des ressources
+## 6. Ce que ce moteur ne fait pas (encore)
 
-## 🔧 Configuration Avancée
-
-### Paramètres de Détection de Balle
-```python
-min_ball_radius = 5      # Rayon minimum (pixels)
-max_ball_radius = 25     # Rayon maximum (pixels)
-confidence_threshold = 0.7  # Seuil de confiance
-history_length = 30      # Historique des positions
-```
-
-### Paramètres de Segmentation
-```python
-background_learning_rate = 0.01  # Taux d'apprentissage fond
-morphology_kernel_size = 5       # Taille kernel morphologique
-min_player_area = 500           # Aire minimale joueur (pixels)
-```
-
-### Paramètres d'Événements
-```python
-velocity_threshold = 20     # Seuil vélocité (px/frame)
-bounce_detection_threshold = 100  # Seuil rebond
-net_tolerance = 30         # Tolérance zone filet (pixels)
-rally_end_timeout = 1.0    # Timeout fin échange (secondes)
-```
-
-## 🎯 Cas d'Usage Avancés
-
-### 1. **Analyse de Match Compétitif**
-- Suivi complet des statistiques de match
-- Analyse comparative des styles de jeu
-- Détection des points faibles tactiques
-- Évaluation de la progression en temps réel
-
-### 2. **Entraînement Technique**
-- Focus sur des coups spécifiques
-- Analyse de la régularité technique
-- Correction des défauts de mouvement
-- Optimisation de la préparation physique
-
-### 3. **Analyse Tactique**
-- Patterns de jeu récurrents
-- Efficacité des différentes zones
-- Adaptation aux adversaires
-- Stratégies de placement de balle
-
-### 4. **Évaluation de Progression**
-- Métriques objectives de performance
-- Comparaison temporelle des résultats
-- Identification des domaines d'amélioration
-- Validation de l'efficacité de l'entraînement
-
-## 🔮 Développements Futurs
-
-### Version 2.0 Prévue
-- **Analyse 3D** : Reconstruction spatiale de la trajectoire
-- **IA Prédictive** : Anticipation des coups adverses
-- **Analyse Biomécanique** : Étude des mouvements corporels
-- **Réalité Augmentée** : Overlay des données sur la vidéo live
-
-### Intégrations Possibles
-- **Capteurs IoT** : Raquettes connectées
-- **Caméras Multi-Angles** : Vue 360° du match
-- **Analyse Audio** : Son de l'impact balle-raquette
-- **ML Personnel** : Modèles adaptés au joueur individuel
-
----
-
-**PingPro + TTNet** représente l'état de l'art en analyse sportive pour le tennis de table, combinant recherche académique de pointe et application pratique pour tous les niveaux de joueurs.
+- Pas de tracking multi-joueurs ni d'identification des joueurs.
+- Pas d'estimation d'effet (spin).
+- Pas de scoring automatique fiable (le score affiché reste une estimation).
+- Pas de temps réel : une analyse complète prend plusieurs fois la durée de la
+  vidéo sur CPU (l'échantillonnage 1 frame sur 5 réduit le coût, pas à 0).

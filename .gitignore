@@ -72,4 +72,5 @@ backend/compilations/*
 # ML models downloaded at runtime
 backend/*.task
 backend/*.tflite
+backend/models/*.onnx
 
