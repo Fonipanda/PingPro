@@ -799,6 +799,81 @@ const ResultsPage = ({ results, onReset }) => {
             </TabsTrigger>
           </TabsList>
 
+          {/* Indicateurs de qualité / confiance de l'analyse */}
+          {results && (
+            <div className="bg-white rounded-lg shadow-sm border p-4 grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              {(() => {
+                const ma = results.match_analysis || {};
+                const detectionRate = num(ma.ball_detection_rate, 0);
+                const tableSource = ma.table_source || 'absent';
+                const scoring = ma.scoring_summary || {};
+                const total = num(scoring.total_points, 0);
+                const confident = num(scoring.confident_points, 0);
+                const estimated = num(scoring.estimated_points, 0);
+                return (
+                  <>
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">Détection balle</p>
+                      <div className="flex items-center space-x-2">
+                        <Progress value={detectionRate} className="flex-1 h-2" />
+                        <span className="text-sm font-medium">{pct(detectionRate)}</span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {detectionRate < 30
+                          ? 'Faible : le modèle de balle devrait être fine-tuné'
+                          : detectionRate < 60
+                          ? 'Moyen : résultats estimatifs'
+                          : 'Bon : échanges et rebonds fiables'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">Calibrage table</p>
+                      <Badge
+                        variant={
+                          tableSource === 'manual'
+                            ? 'default'
+                            : tableSource === 'auto'
+                            ? 'secondary'
+                            : 'outline'
+                        }
+                      >
+                        {tableSource === 'manual'
+                          ? 'Manuel'
+                          : tableSource === 'auto'
+                          ? 'Auto'
+                          : 'Non calibré'}
+                      </Badge>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {tableSource === 'manual'
+                          ? 'Homographie fiable via les 4 coins'
+                          : tableSource === 'auto'
+                          ? 'Homographie automatique'
+                          : 'Carte de placement non disponible'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">Attribution des points</p>
+                      <div className="flex items-center space-x-2 text-sm">
+                        <span className="font-medium">{confident}</span>
+                        <span className="text-green-600">confiants</span>
+                        <span className="text-gray-300">|</span>
+                        <span className="font-medium">{estimated}</span>
+                        <span className="text-amber-600">estimés</span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {total === 0
+                          ? 'Aucun point détecté'
+                          : confident < total / 2
+                          ? 'Score approximatif'
+                          : 'Score majoritairement fiable'}
+                      </p>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          )}
+
           {/* ---------------- Match Compilé ---------------- */}
           <TabsContent value="match-compilation" className="space-y-8">
             {compilations.auto_edit && (

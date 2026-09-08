@@ -21,11 +21,20 @@ logger = logging.getLogger(__name__)
 REFERENCES_DIR = Path(__file__).parent / "references"
 
 
-def _extract_pose_sequence(frames: List[Dict], joint_names: List[str]) -> np.ndarray:
-    """Extrait une matrice T x N joints x 2 coordonnées normalisées."""
+def _extract_pose_sequence(
+    frames: List[Dict],
+    joint_names: List[str],
+    use_world: bool = False,
+) -> np.ndarray:
+    """
+    Extrait une matrice T x N joints x 2 coordonnées.
+    Si use_world=True, utilise les landmarks monde (mètres, origine hanches) :
+    plus invariants à la caméra.
+    """
     sequence = []
+    key = "world_poses" if use_world else "poses"
     for frame in frames:
-        poses = frame.get("poses", [])
+        poses = frame.get(key, [])
         if not poses:
             continue
         landmarks = poses[0]
@@ -33,7 +42,6 @@ def _extract_pose_sequence(frames: List[Dict], joint_names: List[str]) -> np.nda
         for name in joint_names:
             found = False
             for idx, lm in enumerate(landmarks):
-                # indices standards MediaPipe
                 if (
                     (name == "right_shoulder" and idx == 12)
                     or (name == "right_elbow" and idx == 14)
@@ -56,6 +64,17 @@ def _extract_pose_sequence(frames: List[Dict], joint_names: List[str]) -> np.nda
     return np.array(sequence)
 
 
+def _normalize_sequence(seq: np.ndarray) -> np.ndarray:
+    """Normalise : centrage + échelle unitaire (invariant translation/échelle)."""
+    if seq.size == 0:
+        return seq
+    mean = np.mean(seq, axis=0)
+    std = np.std(seq)
+    if std < 1e-9:
+        return seq - mean
+    return (seq - mean) / std
+
+
 def _dtw_distance(seq_a: np.ndarray, seq_b: np.ndarray) -> float:
     """DTW simple avec distance euclidienne."""
     n, m = len(seq_a), len(seq_b)
@@ -71,6 +90,19 @@ def _dtw_distance(seq_a: np.ndarray, seq_b: np.ndarray) -> float:
             dtw[i, j] = cost + min(dtw[i - 1, j], dtw[i, j - 1], dtw[i - 1, j - 1])
 
     return float(dtw[n, m])
+
+
+def _canonical_stroke_type(stroke_type: str) -> str:
+    """Mappe les labels de match_analysis vers les noms de référence."""
+    mapping = {
+        "topspin_coup_droit": "forehand_topspin",
+        "coup_droit": "forehand_topspin",
+        "topspin_revers": "backhand",
+        "revers": "backhand",
+        "inconnu": "forehand_topspin",
+        "serve": "serve",
+    }
+    return mapping.get(stroke_type, stroke_type)
 
 
 def _load_reference_from_library(stroke_type: str) -> Optional[np.ndarray]:
@@ -158,23 +190,32 @@ def compare_with_reference(
 ) -> Dict[str, Any]:
     """
     Compare la séquence de poses utilisateur avec un modèle de référence.
+    Utilise les landmarks monde quand disponibles (plus invariants) et normalise
+    les séquences avant DTW.
     """
-    user_seq = _extract_pose_sequence(frames, JOINT_NAMES)
-    ref_seq = get_reference_sequence(stroke_type)
+    canonical = _canonical_stroke_type(stroke_type)
+    has_world = any(f.get("world_poses") for f in frames)
+    user_seq = _extract_pose_sequence(frames, JOINT_NAMES, use_world=has_world)
+    ref_seq = get_reference_sequence(canonical)
 
     if ref_seq is None or len(user_seq) == 0:
         return {
-            "stroke_type": stroke_type,
+            "stroke_type": canonical,
+            "input_stroke_type": stroke_type,
             "similarity_score": 0.0,
             "distance": None,
             "observations": ["Modèle de référence ou séquence utilisateur indisponible"],
         }
 
-    distance = _dtw_distance(user_seq, ref_seq)
-    # Normalisation grossière : distance divisée par la longueur et le nombre de joints
+    # Normalisation pour rendre la comparaison invariante à la position/échelle
+    user_norm = _normalize_sequence(user_seq)
+    ref_norm = _normalize_sequence(ref_seq)
+
+    distance = _dtw_distance(user_norm, ref_norm)
+    # Normalisation : distance moyenne par frame et par joint
     normalized = distance / max(1, len(user_seq) * len(JOINT_NAMES))
-    # Score entre 0 et 100
-    score = max(0.0, 100.0 - normalized * 500)
+    # Score 0-100 : plus la distance normalisée est faible, plus le score est élevé
+    score = max(0.0, 100.0 - normalized * 800)
 
     observations = []
     if score >= 80:
@@ -193,7 +234,8 @@ def compare_with_reference(
         reference_landmarks.append(lms)
 
     return {
-        "stroke_type": stroke_type,
+        "stroke_type": canonical,
+        "input_stroke_type": stroke_type,
         "similarity_score": round(score, 1),
         "distance": round(distance, 2),
         "normalized_distance": round(normalized, 4),

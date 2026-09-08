@@ -42,9 +42,17 @@ def _extract_ball_points(frame_analyses: List[Dict[str, Any]]) -> List[Dict[str,
     return points
 
 
-def segment_rallies(ball_points: List[Dict[str, float]]) -> List[Dict[str, Any]]:
-    """Segmentation des échanges à partir des silences de détection balle."""
-    rallies = []
+def segment_rallies(
+    ball_points: List[Dict[str, float]],
+    table_coords: Optional[List[Tuple[float, float]]] = None,
+    min_confidence_ratio: float = 0.25,
+) -> List[Dict[str, Any]]:
+    """
+    Segmentation des échanges à partir des silences de détection balle.
+    Si table_coords est fourni, compte les traversées du filet (x=0) dans le
+    repère table ; sinon retombe sur le changement de signe de dx image.
+    """
+    rallies: List[Dict[str, Any]] = []
     current: List[Dict[str, float]] = []
 
     def close_current():
@@ -54,14 +62,30 @@ def segment_rallies(ball_points: List[Dict[str, float]]) -> List[Dict[str, Any]]
         duration = end - start
         if duration < RALLY_MIN_DURATION_S:
             return
-        # Nombre de frappes ≈ nombre de traversées du filet (aller-retour) + 1.
-        # Sans homographie, on utilise le changement de signe de dx comme proxy.
+
+        confidences = [p["conf"] for p in current]
+        confidence_ratio = sum(1 for c in confidences if c and c > 0.3) / len(confidences)
+        if confidence_ratio < min_confidence_ratio:
+            return
+
+        # Traversées du filet
         crossings = 0
-        for i in range(2, len(current)):
-            dx1 = current[i - 1]["x"] - current[i - 2]["x"]
-            dx2 = current[i]["x"] - current[i - 1]["x"]
-            if dx1 * dx2 < 0 and abs(dx1) + abs(dx2) > 0:
-                crossings += 1
+        if table_coords and len(table_coords) == len(ball_points):
+            idx0 = ball_points.index(current[0])
+            for i in range(idx0 + 2, idx0 + len(current)):
+                x1 = table_coords[i - 1][0]
+                x2 = table_coords[i][0]
+                if x1 == 0 or x2 == 0:
+                    continue
+                if x1 * x2 < 0 and abs(x2 - x1) > 0.05:
+                    crossings += 1
+        else:
+            for i in range(2, len(current)):
+                dx1 = current[i - 1]["x"] - current[i - 2]["x"]
+                dx2 = current[i]["x"] - current[i - 1]["x"]
+                if dx1 * dx2 < 0 and abs(dx1) + abs(dx2) > 0:
+                    crossings += 1
+
         rallies.append(
             {
                 "start_time": round(start, 2),
@@ -69,6 +93,7 @@ def segment_rallies(ball_points: List[Dict[str, float]]) -> List[Dict[str, Any]]
                 "duration": round(duration, 2),
                 "stroke_count": max(2, crossings + 1),
                 "detections": len(current),
+                "confidence_ratio": round(confidence_ratio, 2),
             }
         )
 
@@ -192,6 +217,19 @@ def _classify_stroke_side(speed_ms: float, table_y: float, speed_median_ms: floa
     return f"{kind}_{side}"
 
 
+def _smooth_series(values: List[float], window: int = 3) -> List[float]:
+    """Lissage par médiane glissante ; conserve les extrémités."""
+    if len(values) < window:
+        return values
+    half = window // 2
+    smoothed = []
+    for i in range(len(values)):
+        lo = max(0, i - half)
+        hi = min(len(values), i + half + 1)
+        smoothed.append(float(np.median(values[lo:hi])))
+    return smoothed
+
+
 def detect_bounces(
     ball_points: List[Dict[str, float]],
     table_coords: List[Tuple[float, float]],
@@ -200,35 +238,47 @@ def detect_bounces(
 ) -> List[Dict[str, Any]]:
     """Rebonds : changement de signe de la vitesse verticale de la balle sur la table."""
     n = len(ball_points)
+    if n < 4 or not table_coords:
+        return []
+
+    # Lissage de la trajectoire verticale table pour réduire le bruit
+    ys = _smooth_series([c[1] for c in table_coords], window=3)
+    xs = [c[0] for c in table_coords]
+
     candidates = []
-    for i in range(1, n - 1):
+    for i in range(2, n - 2):
         if not (inside_flags and inside_flags[i] and inside_flags[i - 1] and inside_flags[i + 1]):
             continue
-        y_prev, y_curr, y_next = (
-            table_coords[i - 1][1],
-            table_coords[i][1],
-            table_coords[i + 1][1],
-        )
+        y_prev, y_curr, y_next = ys[i - 1], ys[i], ys[i + 1]
         vy1, vy2 = y_curr - y_prev, y_next - y_curr
-        # Rebond : la balle descend puis remonte (changement de signe net)
-        if vy1 < 0 and vy2 > 0 and (vy2 - vy1) > 0.01:
-            # vitesse locale approximative (m/s) autour du rebond
-            dt1 = ball_points[i]["t"] - ball_points[i - 1]["t"]
-            dt2 = ball_points[i + 1]["t"] - ball_points[i]["t"]
-            speed = 0.0
-            if dt1 > 0 and dt2 > 0:
-                d1 = ((table_coords[i][0] - table_coords[i - 1][0]) ** 2 + (table_coords[i][1] - table_coords[i - 1][1]) ** 2) ** 0.5
-                d2 = ((table_coords[i + 1][0] - table_coords[i][0]) ** 2 + (table_coords[i + 1][1] - table_coords[i][1]) ** 2) ** 0.5
-                speed = (d1 + d2) / (dt1 + dt2)
-            candidates.append(
-                {
-                    "timestamp": round(ball_points[i]["t"], 2),
-                    "table_x": round(table_coords[i][0], 2),
-                    "table_y": round(table_coords[i][1], 2),
-                    "confidence": min(1.0, (vy2 - vy1) / 0.2),
-                    "speed_ms": round(speed, 1),
-                }
-            )
+        # Rebond : descente puis remontée nette
+        if not (vy1 < -0.005 and vy2 > 0.005 and (vy2 - vy1) > 0.01):
+            continue
+
+        # vitesse locale (m/s)
+        dt1 = ball_points[i]["t"] - ball_points[i - 1]["t"]
+        dt2 = ball_points[i + 1]["t"] - ball_points[i]["t"]
+        speed = 0.0
+        if dt1 > 0 and dt2 > 0:
+            d1 = ((xs[i] - xs[i - 1]) ** 2 + (ys[i] - ys[i - 1]) ** 2) ** 0.5
+            d2 = ((xs[i + 1] - xs[i]) ** 2 + (ys[i + 1] - ys[i]) ** 2) ** 0.5
+            speed = (d1 + d2) / (dt1 + dt2)
+        # filtrage des faux rebonds (balle quasi à l'arrêt ou hors plage réaliste)
+        if speed < 0.3 or speed > 25.0:
+            continue
+        # le rebond doit être dans les limites de la table
+        if abs(xs[i]) > HALF_LENGTH or abs(ys[i]) > HALF_WIDTH:
+            continue
+
+        candidates.append(
+            {
+                "timestamp": round(ball_points[i]["t"], 2),
+                "table_x": round(xs[i], 2),
+                "table_y": round(ys[i], 2),
+                "confidence": min(1.0, (vy2 - vy1) / 0.2),
+                "speed_ms": round(speed, 1),
+            }
+        )
 
     if candidates:
         median_speed = float(np.median([c["speed_ms"] for c in candidates]))
@@ -290,6 +340,11 @@ def build_match_analysis(
     frame_analyses = ttnet_results.get("frame_analyses", [])
     ball_points = _extract_ball_points(frame_analyses)
 
+    # Taux de détection balle (pour l'indicateur de qualité frontend)
+    total_frames = len(frame_analyses)
+    detected_frames = sum(1 for f in frame_analyses if f.get("ball_position"))
+    ball_detection_rate = round(detected_frames / max(1, total_frames) * 100, 1)
+
     if table_info is None:
         try:
             detector = TableDetector()
@@ -300,7 +355,7 @@ def build_match_analysis(
 
     table_coords, inside_flags = _table_positions(ball_points, table_info)
 
-    rallies = segment_rallies(ball_points)
+    rallies = segment_rallies(ball_points, table_coords)
     placement = _placement_analysis(table_coords, inside_flags)
     speeds = _speed_analysis(ball_points, table_coords, table_info, fallback_scale_m_per_px)
     bounces = (
@@ -317,6 +372,12 @@ def build_match_analysis(
     }
 
     scoring_events = attribute_rallies(rallies, bounces) if (rallies and bounces) else []
+    confident_points = sum(1 for e in scoring_events if e.get("confident"))
+    scoring_summary = {
+        "total_points": len(scoring_events),
+        "confident_points": confident_points,
+        "estimated_points": len(scoring_events) - confident_points,
+    }
 
     # Stats par camp : rebonds sur chaque moitié + vitesse moyenne par camp
     player_stats: Dict[str, Any] = {}
@@ -337,6 +398,7 @@ def build_match_analysis(
             [[float(x), float(y)] for x, y in table_info["quad"]] if table_info else None
         ),
         "total_ball_detections": len(ball_points),
+        "ball_detection_rate": ball_detection_rate,
         "rallies": rallies,
         "rally_summary": {
             "total_rallies": len(rallies),
@@ -351,6 +413,7 @@ def build_match_analysis(
         "ball_speed": speeds,
         "bounces": bounces[:100],
         "scoring_events": scoring_events,
+        "scoring_summary": scoring_summary,
         "player_stats": player_stats,
         "key_moments": {
             "longest_rally": longest,

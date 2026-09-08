@@ -613,7 +613,7 @@ class VideoProcessor:
     def _analyze_tactics(self, rallies: List[Rally]) -> Dict[str, Any]:
         """Analyser la tactique avec lexique technique"""
         return {
-            'average_rally_length': np.mean([r.stroke_count for r in rallies]),
+            'average_rally_length': np.mean([r.stroke_count for r in rallies]) if rallies else 0,
             'longest_rally': max([r.stroke_count for r in rallies]) if rallies else 0,
             'initiative_rate': len([r for r in rallies if r.winner == "player"]) / len(rallies) if rallies else 0,
             'defensive_rallies': len([r for r in rallies if r.stroke_count >= 8]),

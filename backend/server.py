@@ -42,6 +42,7 @@ from players_tracker import analyze_players
 from video_overlay import (
     get_ffmpeg_path,
     build_auto_edit,
+    build_best_rallies_compilation,
     generate_placement_overlay,
     generate_pose_overlay,
 )
@@ -344,18 +345,24 @@ _AUTO_EDIT_SEGMENTS: Dict[str, List[Dict[str, float]]] = {}
 
 def _compile_auto_edit(
     video_path: str, out_dir: Path, rallies: List[Dict[str, Any]], analysis_id: str
-) -> Optional[str]:
-    """Montage auto : concatène les échanges réellement détectés (sans temps morts).
+) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Montage auto : concatène les échanges réellement détectés (sans temps morts).
 
     Utilise un trim+concat ré-encodé (précis) et mémorise la correspondance
-    temporelle pour les overlays (placement, pose)."""
+    temporelle pour les overlays (placement, pose). Si le montage complet
+    échoue, retombe sur une compilation des meilleurs échanges.
+    """
     ffmpeg_path = get_ffmpeg_path()
     if not ffmpeg_path or not rallies:
-        return None
+        return None, None
     output_path, segments = build_auto_edit(video_path, rallies, out_dir, ffmpeg_path)
     if output_path and segments:
         _AUTO_EDIT_SEGMENTS[analysis_id] = segments
-    return output_path
+        return output_path, output_path
+    # Fallback : meilleurs échanges (même segments, pas de correspondance overlay)
+    fallback = build_best_rallies_compilation(video_path, rallies, out_dir, ffmpeg_path)
+    return fallback, fallback
 
 
 def _compile_videos(
@@ -379,24 +386,29 @@ def _compile_videos(
         compilations: Dict[str, Optional[str]] = {}
 
         # Montage auto prioritaire : échanges réellement détectés par le tracker
-        if detected_rallies:
-            auto_edit = _compile_auto_edit(video_path, out_dir, detected_rallies, analysis_id)
-            if auto_edit:
-                compilations["auto_edit"] = auto_edit
+        auto_edit, best_rallies = _compile_auto_edit(
+            video_path, out_dir, detected_rallies, analysis_id
+        )
+        if auto_edit:
+            compilations["auto_edit"] = auto_edit
+        if best_rallies:
+            compilations["best_rallies"] = best_rallies
 
-        segments = [
-            ("match_compilation", 0, min(60, duration)),
-            ("strengths", min(30, duration), min(60, duration)),
-            ("weaknesses", min(60, duration), min(60, duration - min(60, duration))),
-            ("best_rallies", max(0, duration - 60), min(60, duration)),
-        ]
+        # Segments génériques si la détection d'échange a échoué
+        if not auto_edit and not best_rallies:
+            segments = [
+                ("match_compilation", 0, min(60, duration)),
+                ("strengths", min(30, duration), min(60, duration)),
+                ("weaknesses", min(60, duration), min(60, duration - min(60, duration))),
+                ("best_rallies", max(0, duration - 60), min(60, duration)),
+            ]
 
-        for name, start, seg_duration in segments:
-            if seg_duration <= 0:
-                continue
-            output_path = str(out_dir / f"{name}.mp4")
-            if _create_video_segment(video_path, output_path, start, seg_duration):
-                compilations[name] = output_path
+            for name, start, seg_duration in segments:
+                if seg_duration <= 0:
+                    continue
+                output_path = str(out_dir / f"{name}.mp4")
+                if _create_video_segment(video_path, output_path, start, seg_duration):
+                    compilations[name] = output_path
 
         return compilations or None
     except Exception as e:
@@ -1026,6 +1038,8 @@ async def _process_video_analysis(analysis_id: str, video_path: str, params: Ana
 
         # 3. Pose analysis with MediaPipe
         # Non bloquant : une erreur pose ne doit pas annuler toute l'analyse
+        # On aligne le contact pose sur les rebonds détectés quand c'est possible.
+        pose_bounces = (match_analysis or {}).get("bounces") if match_analysis else None
         try:
             pose_results = await asyncio.get_event_loop().run_in_executor(
                 None,
@@ -1034,6 +1048,8 @@ async def _process_video_analysis(analysis_id: str, video_path: str, params: Ana
                 analysis_id,
                 params.player_side,
                 str(COMPILATIONS_DIR),
+                5,
+                pose_bounces,
             )
         except Exception as e:
             logger.warning(f"Pose analysis failed (non-blocking): {e}")
@@ -1047,7 +1063,7 @@ async def _process_video_analysis(analysis_id: str, video_path: str, params: Ana
 
         # 5. Pose reference comparison
         pose_frames = pose_results.get("frames", []) if "error" not in pose_results else []
-        stroke_type = _infer_stroke_type(params.focus_areas)
+        stroke_type = pose_results.get("stroke_type") or _infer_stroke_type(params.focus_areas)
         pose_comparison = compare_with_reference(pose_frames, stroke_type)
 
         # 6. Performance metrics

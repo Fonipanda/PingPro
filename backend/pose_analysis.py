@@ -229,60 +229,75 @@ class PoseAnalyzer:
         return angles
 
     @staticmethod
-    def detect_stroke_phases(frames: List[Dict[str, Any]], dominant_side: str = "right") -> Dict[str, Any]:
+    def detect_stroke_phases(
+        frames: List[Dict[str, Any]],
+        dominant_side: str = "right",
+        contact_bounces: Optional[List[Dict[str, Any]]] = None,
+    ) -> Dict[str, Any]:
         """
-        Détecte les phases du geste (armé, frappe, accompagnement) à partir
-        de la vitesse du poignet et de la rotation du tronc.
+        Détecte les phases du geste (armé, frappe, accompagnement).
+
+        Si contact_bounces est fourni (timestamps de rebonds détectés), le contact
+        est aligné sur le rebond le plus proche d'un maximum de vitesse du poignet :
+        cela donne un contact "réel" plutôt que purement heuristique.
         """
         wrist_name = "RIGHT_WRIST" if dominant_side == "right" else "LEFT_WRIST"
         shoulder_name = "RIGHT_SHOULDER" if dominant_side == "right" else "LEFT_SHOULDER"
         hip_name = "RIGHT_HIP" if dominant_side == "right" else "LEFT_HIP"
 
-        speeds = []
-        rotations = []
-        timestamps = []
-
+        indexed = []
         prev_wrist = None
         prev_time = None
         for frame in frames:
             poses = frame.get("poses", [])
             if not poses:
                 continue
-            # Prend la pose principale (première détectée)
             landmarks = poses[0]
             wrist = _get_landmark(landmarks, wrist_name)
             shoulder = _get_landmark(landmarks, shoulder_name)
             hip = _get_landmark(landmarks, hip_name)
-
             if wrist is None or shoulder is None or hip is None:
                 continue
-
+            speed = 0.0
             if prev_wrist is not None and prev_time is not None:
                 dt = frame["timestamp"] - prev_time
                 if dt > 0:
                     speed = _distance_2d(wrist, prev_wrist) / dt
-                    speeds.append(speed)
-                else:
-                    speeds.append(0.0)
-            else:
-                speeds.append(0.0)
-
-            # Rotation approximative : angle horizontal épaule-hanche-bras
-            rotation = math.atan2(shoulder["y"] - hip["y"], shoulder["x"] - hip["x"])
-            rotations.append(rotation)
-            timestamps.append(frame["timestamp"])
-
+            indexed.append(
+                {
+                    "timestamp": frame["timestamp"],
+                    "frame_idx": frame["frame_idx"],
+                    "speed": speed,
+                    "landmarks": landmarks,
+                }
+            )
             prev_wrist = wrist
             prev_time = frame["timestamp"]
 
-        if not speeds:
-            return {"phases": {}, "contact_frame": None}
+        if not indexed:
+            return {"phases": {}, "contact_frame": None, "dominant_side": dominant_side}
 
-        speeds = np.array(speeds)
-        contact_idx = int(np.argmax(speeds))
+        speeds = np.array([d["speed"] for d in indexed])
+        speed_contact_idx = int(np.argmax(speeds))
 
-        # Détecter l'armé (vitesse croissante avant le contact)
-        # et l'accompagnement (vitesse décroissante après le contact)
+        # Alignement sur un rebond réel si disponible
+        if contact_bounces:
+            best_idx = speed_contact_idx
+            best_score = -1.0
+            for i, d in enumerate(indexed):
+                t = d["timestamp"]
+                # distance temporelle au rebond le plus proche
+                min_dt = min(abs(t - b["timestamp"]) for b in contact_bounces)
+                # score : vitesse élevée ET proche d'un rebond
+                score = speeds[i] * max(0.0, 1.0 - min_dt / 0.6)
+                if score > best_score:
+                    best_score = score
+                    best_idx = i
+            contact_idx = best_idx
+        else:
+            contact_idx = speed_contact_idx
+
+        # Armé et accompagnement autour du contact
         backswing_idx = max(0, contact_idx - 1)
         for i in range(contact_idx - 1, -1, -1):
             if speeds[i] < speeds[i + 1]:
@@ -300,21 +315,22 @@ class PoseAnalyzer:
         return {
             "phases": {
                 "backswing": {
-                    "start_timestamp": timestamps[backswing_idx] if timestamps else 0,
+                    "start_timestamp": indexed[backswing_idx]["timestamp"],
                     "frame_idx": backswing_idx,
                 },
                 "contact": {
-                    "timestamp": timestamps[contact_idx] if timestamps else 0,
+                    "timestamp": indexed[contact_idx]["timestamp"],
                     "frame_idx": contact_idx,
-                    "max_wrist_speed": float(speeds[contact_idx]) if len(speeds) else 0.0,
+                    "max_wrist_speed": float(speeds[contact_idx]),
                 },
                 "follow_through": {
-                    "end_timestamp": timestamps[follow_through_idx] if timestamps else 0,
+                    "end_timestamp": indexed[follow_through_idx]["timestamp"],
                     "frame_idx": follow_through_idx,
                 },
             },
             "contact_frame": contact_idx,
             "dominant_side": dominant_side,
+            "contact_timestamp": indexed[contact_idx]["timestamp"],
         }
 
     @staticmethod
@@ -464,6 +480,7 @@ def analyze_video_pose(
     player_side: str = "droite",
     compilations_dir: str = "compilations",
     sample_rate: int = 5,
+    contact_bounces: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """
     Fonction principale : analyse la pose sur une vidéo et retourne un dict structuré.
@@ -480,8 +497,16 @@ def analyze_video_pose(
     if not frames:
         return {"error": "No pose detected"}
 
-    # Phase de frappe et frame de contact
-    phase_data = PoseAnalyzer.detect_stroke_phases(frames, dominant_side)
+    # Phase de frappe et frame de contact (alignée sur les rebonds si dispo)
+    phase_data = PoseAnalyzer.detect_stroke_phases(frames, dominant_side, contact_bounces)
+
+    # Déterminer le type de coup au contact pour choisir la référence
+    contact_ts = phase_data.get("contact_timestamp")
+    stroke_type = "topspin_coup_droit"  # défaut
+    if contact_bounces and contact_ts is not None:
+        nearest = min(contact_bounces, key=lambda b: abs(b["timestamp"] - contact_ts))
+        if nearest.get("stroke_side"):
+            stroke_type = nearest["stroke_side"]
 
     # Angles au moment du contact
     contact_frame_idx = phase_data.get("contact_frame") or 0
@@ -525,6 +550,7 @@ def analyze_video_pose(
         "sample_rate": sample_rate,
         "total_frames_analyzed": len(frames),
         "dominant_side": dominant_side,
+        "stroke_type": stroke_type,
         "contact_angles": contact_angles,
         "phases": phase_data.get("phases", {}),
         "kinetic_chain": kinetic_chain,

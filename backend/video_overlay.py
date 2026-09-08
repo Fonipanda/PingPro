@@ -58,13 +58,18 @@ def build_segments(
     margin_before: float = 0.5,
     margin_after: float = 1.0,
     max_rallies: int = 40,
+    min_duration: float = 1.0,
 ) -> List[Dict[str, float]]:
     """Découpe des échanges -> segments avec offset de sortie cumulé."""
     segments: List[Dict[str, float]] = []
     out_cursor = 0.0
+    prev_end = -1.0
     for rally in rallies[:max_rallies]:
-        start = max(0.0, float(rally["start_time"]) - margin_before)
-        end = float(rally["end_time"]) + margin_after
+        raw_start = float(rally["start_time"]) - margin_before
+        raw_end = float(rally["end_time"]) + margin_after
+        # pas de chevauchement avec le segment précédent
+        start = max(0.0, raw_start, prev_end + 0.05)
+        end = max(start + min_duration, raw_end)
         duration = end - start
         if duration <= 0:
             continue
@@ -77,6 +82,7 @@ def build_segments(
             }
         )
         out_cursor += duration
+        prev_end = end
     return segments
 
 
@@ -136,6 +142,58 @@ def build_auto_edit(
     except Exception as e:
         logger.error(f"Auto-edit build failed: {e}")
     return None, []
+
+
+def build_best_rallies_compilation(
+    video_path: str,
+    rallies: List[Dict[str, Any]],
+    out_dir: Path,
+    ffmpeg_path: str,
+    top_n: int = 3,
+) -> Optional[str]:
+    """Fallback : concatène les N échanges les plus longs (ou les plus rapides)."""
+    if not rallies:
+        return None
+    sorted_rallies = sorted(
+        rallies,
+        key=lambda r: (r.get("stroke_count", 0), r.get("duration", 0)),
+        reverse=True,
+    )[:top_n]
+    segments = build_segments(sorted_rallies, margin_before=0.3, margin_after=0.8)
+    if not segments:
+        return None
+    output_path = out_dir / "best_rallies.mp4"
+    filters = []
+    labels = []
+    for i, s in enumerate(segments):
+        filters.append(
+            f"[0:v]trim=start={s['orig_start']:.3f}:end={s['orig_end']:.3f},"
+            f"setpts=PTS-STARTPTS[v{i}]"
+        )
+        labels.append(f"[v{i}]")
+    filter_complex = (
+        ";".join(filters) + f";{''.join(labels)}concat=n={len(segments)}:v=1:a=0[out]"
+    )
+    try:
+        subprocess.run(
+            [
+                ffmpeg_path, "-y",
+                "-i", str(video_path),
+                "-filter_complex", filter_complex,
+                "-map", "[out]",
+                "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+                "-pix_fmt", "yuv420p", "-an",
+                str(output_path),
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=900,
+        )
+        return str(output_path) if output_path.exists() else None
+    except Exception as e:
+        logger.error(f"Best-rallies compilation failed: {e}")
+        return None
 
 
 def _reproject_point(table_x: float, table_y: float, H_inv: np.ndarray) -> Optional[Tuple[int, int]]:
