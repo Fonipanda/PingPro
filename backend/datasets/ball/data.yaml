@@ -1,0 +1,12 @@
+names:
+- ball
+nc: 1
+roboflow:
+  license: CC BY 4.0
+  project: table-tennis-ball-detection-lehe0
+  url: https://universe.roboflow.com/swiftxponse/table-tennis-ball-detection-lehe0/dataset/2
+  version: 2
+  workspace: swiftxponse
+test: ../test/images
+train: ../train/images
+val: ../valid/images
